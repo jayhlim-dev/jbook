@@ -75,6 +75,7 @@
     inset: 0;
     display: grid;
     place-items: center;
+    cursor: pointer;
 }
 
 /* Book canvas where sheets are stacked */
@@ -88,11 +89,24 @@
     transform-style: preserve-3d;
 }
 
+.book.book-orientation-portrait {
+    aspect-ratio: 1.414 / 1;
+}
+
+.book.book-orientation-landscape {
+    aspect-ratio: 2.84 / 1;
+    width: min(100%, 72rem);
+}
+
 .book.book-overlay-size {
     width: min(96vw, calc(94vh * 1.414));
     height: auto;
     max-width: none;
     border-radius: 0.25rem;
+}
+
+.book.book-overlay-size.book-orientation-landscape {
+    width: min(96vw, calc(92vh * 2.84));
 }
 
 /* Decorative spine for visual realism */

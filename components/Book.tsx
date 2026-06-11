@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Page } from './Page';
 
 /**
@@ -76,27 +76,43 @@ const DEFAULT_SHEETS = [
 /**
  * Book container handling navigation and sheet stacking.
  * Uses pure CSS 3D transforms (no external page-flip library).
- * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean }} props
+ * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean }} props
  */
-export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', fullScreen = false }) {
+export function Book({
+    sheets = DEFAULT_SHEETS,
+    title = '3D Page Flip Book',
+    fullScreen = false,
+    onRequestClose,
+    orientation = 'portrait',
+    showEmbeddedControls = true,
+    useCover = true
+}) {
+    const totalSheets = sheets.length;
+    const minPage = useCover ? 0 : Math.min(1, Math.max(totalSheets - 1, 0));
+    const maxPage = useCover ? totalSheets : Math.max(minPage, totalSheets - 1);
+    const initialPage = minPage;
+
     // Index of the next sheet to flip. All sheets before this index are "flipped".
-    const [currentPage, setCurrentPage] = useState(0);
+    const [currentPage, setCurrentPage] = useState(initialPage);
     const [isFullscreen, setIsFullscreen] = useState(fullScreen);
     const [showOverlayUi, setShowOverlayUi] = useState(true);
     const hideUiTimeoutRef = useRef(null);
     const lastMousePositionRef = useRef({ x: null, y: null });
-
-    // Memoized total count keeps math and button logic simple.
-    const totalSheets = useMemo(() => sheets.length, [sheets.length]);
-    const totalViews = totalSheets + 1;
-    const activeView = Math.min(currentPage + 1, totalViews);
-    const isClosedCover = currentPage === 0;
-    const isBackClosed = currentPage === totalSheets;
+    const touchStartXRef = useRef(null);
+    const totalViews = maxPage - minPage + 1;
+    const activeView = currentPage - minPage + 1;
+    const isClosedCover = useCover && currentPage === 0;
+    const isBackClosed = useCover && currentPage === totalSheets;
 
     // Keep local fullscreen state in sync if parent passes a different default.
     useEffect(() => {
         setIsFullscreen(fullScreen);
     }, [fullScreen]);
+
+    // Reset reading position when sheet set or cover mode changes.
+    useEffect(() => {
+        setCurrentPage(initialPage);
+    }, [initialPage, totalSheets]);
 
     // Lock page scroll, support keyboard controls, and auto-hide overlay UI.
     useEffect(() => {
@@ -145,21 +161,21 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
 
         const onKeyDown = (event) => {
             if (event.key === 'Escape') {
-                setIsFullscreen(false);
+                closeFullscreen();
                 return;
             }
 
             // Left Arrow = previous sheet
             if (event.key === 'ArrowLeft') {
                 event.preventDefault();
-                setCurrentPage((prev) => Math.max(prev - 1, 0));
+                setCurrentPage((prev) => Math.max(prev - 1, minPage));
                 return;
             }
 
             // Right Arrow and Space = next sheet
             if (event.key === 'ArrowRight' || event.key === ' ' || event.code === 'Space') {
                 event.preventDefault();
-                setCurrentPage((prev) => Math.min(prev + 1, totalSheets));
+                setCurrentPage((prev) => Math.min(prev + 1, maxPage));
             }
         };
 
@@ -181,14 +197,50 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
                 hideUiTimeoutRef.current = null;
             }
         };
-    }, [isFullscreen, totalSheets]);
+    }, [isFullscreen, maxPage, minPage, totalSheets]);
 
     function goNext() {
-        setCurrentPage((prev) => Math.min(prev + 1, totalSheets));
+        setCurrentPage((prev) => Math.min(prev + 1, maxPage));
     }
 
     function goPrevious() {
-        setCurrentPage((prev) => Math.max(prev - 1, 0));
+        setCurrentPage((prev) => Math.max(prev - 1, minPage));
+    }
+
+    function closeFullscreen() {
+        setIsFullscreen(false);
+        if (onRequestClose) onRequestClose();
+    }
+
+    function onSceneClick(event) {
+        if (!isFullscreen) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        const isRightSide = event.clientX > rect.left + rect.width / 2;
+        if (isRightSide) {
+            goNext();
+        } else {
+            goPrevious();
+        }
+    }
+
+    function onSceneTouchStart(event) {
+        if (!isFullscreen) return;
+        touchStartXRef.current = event.changedTouches[0]?.clientX ?? null;
+    }
+
+    function onSceneTouchEnd(event) {
+        if (!isFullscreen || touchStartXRef.current === null) return;
+        const endX = event.changedTouches[0]?.clientX ?? touchStartXRef.current;
+        const delta = endX - touchStartXRef.current;
+        touchStartXRef.current = null;
+
+        // Swipe threshold avoids accidental turns on tiny touch movement.
+        if (Math.abs(delta) < 30) return;
+        if (delta < 0) {
+            goNext();
+        } else {
+            goPrevious();
+        }
     }
 
     return (
@@ -210,18 +262,23 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
             {isFullscreen && (
                 <header className={`book-overlay-top ${showOverlayUi ? '' : 'controls-hidden'}`}>
                     <h2>{title}</h2>
-                    <button type="button" className="book-button" onClick={() => setIsFullscreen(false)}>
+                    <button type="button" className="book-button" onClick={closeFullscreen}>
                         Exit Full Screen
                     </button>
                 </header>
             )}
 
             {/* Perspective scene gives depth to rotateY transforms */}
-            <div className={`book-scene ${isFullscreen ? 'book-scene-overlay' : ''}`}>
+            <div
+                className={`book-scene ${isFullscreen ? 'book-scene-overlay' : ''}`}
+                onClick={onSceneClick}
+                onTouchStart={onSceneTouchStart}
+                onTouchEnd={onSceneTouchEnd}
+            >
                 <div
-                    className={`book ${isFullscreen ? 'book-overlay-size' : ''} ${isClosedCover ? 'book-closed' : ''} ${
-                        isBackClosed ? 'book-back-closed' : ''
-                    }`}
+                    className={`book ${isFullscreen ? 'book-overlay-size' : ''} book-orientation-${orientation} ${
+                        isClosedCover ? 'book-closed' : ''
+                    } ${isBackClosed ? 'book-back-closed' : ''}`}
                 >
                     <div className="book-spine" />
                     <div className="book-base-page book-base-left" />
@@ -247,16 +304,16 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
             </div>
 
             {/* Standard controls for non-fullscreen mode */}
-            {!isFullscreen && (
+            {!isFullscreen && showEmbeddedControls && (
                 <div className="book-controls">
-                    <button type="button" className="book-button" onClick={goPrevious} disabled={currentPage === 0}>
+                    <button type="button" className="book-button" onClick={goPrevious} disabled={currentPage === minPage}>
                         Previous
                     </button>
                     <button
                         type="button"
                         className="book-button"
                         onClick={goNext}
-                        disabled={currentPage === totalSheets}
+                        disabled={currentPage === maxPage}
                     >
                         Next
                     </button>
@@ -269,7 +326,7 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
             {/* Netflix-like bottom bar while in fullscreen mode */}
             {isFullscreen && (
                 <footer className={`book-overlay-bottom ${showOverlayUi ? '' : 'controls-hidden'}`}>
-                    <button type="button" className="book-button" onClick={goPrevious} disabled={currentPage === 0}>
+                    <button type="button" className="book-button" onClick={goPrevious} disabled={currentPage === minPage}>
                         Previous
                     </button>
                     <p>
@@ -279,7 +336,7 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
                         type="button"
                         className="book-button"
                         onClick={goNext}
-                        disabled={currentPage === totalSheets}
+                        disabled={currentPage === maxPage}
                     >
                         Next
                     </button>
