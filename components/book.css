@@ -1,0 +1,252 @@
+/* Root wrapper keeps the demo centered and readable */
+.book-demo {
+    display: grid;
+    gap: 1rem;
+    width: min(100%, 54rem);
+    margin-inline: auto;
+}
+
+/* Fullscreen overlay sits above the whole app like a media player */
+.book-demo.book-demo-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: radial-gradient(circle at 50% 30%, #14275f 0%, #050b1f 70%);
+    display: block;
+    overflow: hidden;
+}
+
+/* Hide cursor while fullscreen controls are auto-hidden (Netflix-like idle state) */
+.book-demo.book-demo-overlay.book-cursor-hidden,
+.book-demo.book-demo-overlay.book-cursor-hidden * {
+    cursor: none !important;
+}
+
+/* Title and status line above the book */
+.book-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 1rem;
+}
+
+.book-toolbar p {
+    color: color-mix(in oklab, white 80%, transparent);
+    font-size: 0.875rem;
+}
+
+/* Title stays at top-left in fullscreen mode */
+.book-overlay-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 90;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1rem 0;
+    pointer-events: none;
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.book-overlay-top h2 {
+    margin: 0;
+}
+
+.book-overlay-top .book-button {
+    pointer-events: auto;
+}
+
+/* Perspective is required for realistic 3D depth */
+.book-scene {
+    perspective: 2200px;
+    perspective-origin: 50% 50%;
+}
+
+.book-scene.book-scene-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+}
+
+/* Book canvas where sheets are stacked */
+.book {
+    position: relative;
+    width: min(100%, 48rem);
+    height: 30rem;
+    margin-inline: auto;
+    border-radius: 0.5rem;
+    transform-style: preserve-3d;
+}
+
+.book.book-overlay-size {
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    border-radius: 0;
+}
+
+/* Decorative spine for visual realism */
+.book-spine {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0.75rem;
+    border-radius: 0.5rem 0 0 0.5rem;
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-secondary) 85%, black),
+        color-mix(in oklab, var(--color-secondary) 65%, black)
+    );
+    transform: translateZ(2px);
+}
+
+/* One physical sheet (front + back) */
+.book-sheet {
+    position: absolute;
+    inset: 0;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* All pages before current page receive this class */
+.book-sheet.flipped {
+    transform: rotateY(-180deg);
+}
+
+/* Shared front/back face styling */
+.book-face {
+    position: absolute;
+    inset: 0;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    border: 1px solid color-mix(in oklab, white 15%, transparent);
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-primary) 22%, var(--color-secondary)),
+        color-mix(in oklab, var(--color-primary) 10%, var(--color-secondary))
+    );
+    box-shadow: 0 16px 40px color-mix(in oklab, black 45%, transparent);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: grid;
+    align-content: start;
+    gap: 0.9rem;
+}
+
+.book-face p {
+    color: color-mix(in oklab, white 88%, transparent);
+    line-height: 1.6;
+}
+
+/* In fullscreen, page faces stretch edge-to-edge */
+.book-demo-overlay .book-face {
+    border-radius: 0;
+}
+
+/* Back face must be rotated so it appears after turning */
+.book-face-back {
+    transform: rotateY(180deg);
+}
+
+/* Navigation controls */
+.book-controls {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.book-button {
+    border: 1px solid color-mix(in oklab, white 25%, transparent);
+    border-radius: 0.375rem;
+    padding: 0.625rem 1rem;
+    font-weight: 600;
+    color: white;
+    background: color-mix(in oklab, var(--color-secondary) 75%, black);
+    transition: background-color 160ms ease, opacity 160ms ease;
+}
+
+.book-button:hover:enabled {
+    background: color-mix(in oklab, var(--color-secondary) 90%, black);
+}
+
+.book-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Player-like bottom controls in fullscreen */
+.book-overlay-bottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 1rem 1rem;
+    pointer-events: none;
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.book-overlay-bottom p {
+    margin: 0;
+    text-align: center;
+    font-weight: 600;
+    color: color-mix(in oklab, white 86%, transparent);
+}
+
+.book-overlay-bottom .book-button {
+    pointer-events: auto;
+}
+
+/* Auto-hidden overlay state after user inactivity in fullscreen mode */
+.book-overlay-top.controls-hidden {
+    opacity: 0;
+    transform: translateY(-0.75rem);
+    pointer-events: none;
+}
+
+.book-overlay-bottom.controls-hidden {
+    opacity: 0;
+    transform: translateY(0.75rem);
+    pointer-events: none;
+}
+
+.book-overlay-top.controls-hidden .book-button,
+.book-overlay-bottom.controls-hidden .book-button {
+    pointer-events: none;
+}
+
+.book-overlay-top::before,
+.book-overlay-bottom::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: -1;
+}
+
+.book-overlay-top::before {
+    top: 0;
+    height: 5rem;
+    background: linear-gradient(180deg, color-mix(in oklab, black 55%, transparent), transparent);
+}
+
+.book-overlay-bottom::before {
+    bottom: 0;
+    height: 5rem;
+    background: linear-gradient(0deg, color-mix(in oklab, black 55%, transparent), transparent);
+}
