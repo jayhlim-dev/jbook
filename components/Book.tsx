@@ -76,7 +76,7 @@ const DEFAULT_SHEETS = [
 /**
  * Book container handling navigation and sheet stacking.
  * Uses pure CSS 3D transforms (no external page-flip library).
- * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean }} props
+ * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean, contentPageCount?: number }} props
  */
 export function Book({
     sheets = DEFAULT_SHEETS,
@@ -85,11 +85,13 @@ export function Book({
     onRequestClose,
     orientation = 'portrait',
     showEmbeddedControls = true,
-    useCover = true
+    useCover = true,
+    contentPageCount
 }) {
     const totalSheets = sheets.length;
-    const minPage = useCover ? 0 : Math.min(1, Math.max(totalSheets - 1, 0));
-    const maxPage = useCover ? totalSheets : Math.max(minPage, totalSheets - 1);
+    const resolvedContentPages = contentPageCount ?? Math.max(0, totalSheets * 2 - 2);
+    const minPage = useCover ? 0 : Math.min(1, Math.max(totalSheets, 1));
+    const maxPage = useCover ? totalSheets : Math.max(minPage, Math.ceil(resolvedContentPages / 2));
     const initialPage = minPage;
 
     // Index of the next sheet to flip. All sheets before this index are "flipped".
@@ -103,6 +105,7 @@ export function Book({
     const activeView = currentPage - minPage + 1;
     const isClosedCover = useCover && currentPage === 0;
     const isBackClosed = useCover && currentPage === totalSheets;
+    const isTrailingSinglePage = !useCover && resolvedContentPages % 2 === 1 && currentPage === maxPage;
 
     // Keep local fullscreen state in sync if parent passes a different default.
     useEffect(() => {
@@ -278,11 +281,11 @@ export function Book({
                 <div
                     className={`book ${isFullscreen ? 'book-overlay-size' : ''} book-orientation-${orientation} ${
                         isClosedCover ? 'book-closed' : ''
-                    } ${isBackClosed ? 'book-back-closed' : ''}`}
+                    } ${isBackClosed ? 'book-back-closed' : ''} ${isTrailingSinglePage ? 'book-single-tail' : ''}`}
                 >
-                    <div className="book-spine" />
+                    {/* <div className="book-spine" />
                     <div className="book-base-page book-base-left" />
-                    <div className="book-base-page book-base-right" />
+                    <div className="book-base-page book-base-right" /> */}
 
                     {/* Sheets live on the right side and flip from center spine to the left side. */}
                     {sheets.map((sheet, index) => {

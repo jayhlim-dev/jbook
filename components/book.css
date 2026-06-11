@@ -124,6 +124,8 @@
     );
     transform: translate(-50%, 0) translateZ(2px);
     z-index: 40;
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Base pages establish a two-page A5 spread area. */
@@ -167,6 +169,12 @@
     transition-delay: 0ms;
 }
 
+/* No-cover mode with odd page count: last spread has only left page. */
+.book.book-single-tail .book-base-right {
+    opacity: 0;
+    transition-delay: 0ms;
+}
+
 /* One physical sheet (front + back) */
 .book-sheet {
     position: absolute;
@@ -188,20 +196,25 @@
 .book-face {
     position: absolute;
     inset: 0;
-    padding: 2rem;
-    border-radius: 0 0.5rem 0.5rem 0;
-    border: 1px solid color-mix(in oklab, white 15%, transparent);
+    /* border-radius: 0 0.5rem 0.5rem 0; */
+    /* border: 1px solid color-mix(in oklab, white 15%, transparent); */
     background: linear-gradient(
         180deg,
         color-mix(in oklab, var(--color-primary) 22%, var(--color-secondary)),
         color-mix(in oklab, var(--color-primary) 10%, var(--color-secondary))
     );
-    box-shadow: 0 4px 10px color-mix(in oklab, black 12%, transparent);
+    /* box-shadow: 0 4px 10px color-mix(in oklab, black 12%, transparent); */
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     display: grid;
     align-content: start;
     gap: 0.9rem;
+    overflow: hidden;
+}
+
+/* Remove center seam borders so left/right spread is continuous. */
+.book-face-front {
+    border-left: none;
 }
 
 .book-face p {
@@ -218,6 +231,26 @@
 .book-face-back {
     transform: rotateY(180deg);
     border-radius: 0.5rem 0 0 0.5rem;
+    border-right: none;
+}
+
+/* Uploaded image pages must fill the whole page frame. */
+.flipbook-media-fill {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+.flipbook-media-fill img {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 100% !important;
+    object-fit: contain !important;
+    object-position: center;
+    display: block;
 }
 
 /* Navigation controls */

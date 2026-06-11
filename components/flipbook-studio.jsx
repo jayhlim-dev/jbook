@@ -17,7 +17,7 @@ function mockPdfPageCount(file) {
 function createContentPageNode(page, orientation) {
     if (page.type === 'image') {
         return (
-            <div className="h-full w-full overflow-hidden rounded-sm bg-black/20">
+            <div className="flipbook-media-fill">
                 <img src={page.src} alt={page.label} className="h-full w-full object-cover" />
             </div>
         );
@@ -49,27 +49,18 @@ function createCoverNode(title, subtitle) {
     );
 }
 
-function createBackCoverNode() {
-    return (
-        <div className="flex h-full items-end">
-            <p className="text-sm text-white/70">End of book</p>
-        </div>
-    );
-}
-
 function buildSheetsFromPages(pages, orientation, useCover) {
     const coverFront = createCoverNode('Your Flipbook', `${pages.length} generated page${pages.length === 1 ? '' : 's'}`);
-    const backCover = createBackCoverNode();
     const blankPage = <div className="h-full w-full rounded-sm border border-white/10 bg-black/10" />;
     const pageNodes = pages.map((page) => createContentPageNode(page, orientation));
 
     if (!pages.length) {
-        return [{ front: coverFront, back: useCover ? backCover : blankPage }];
+        return [{ front: coverFront, back: blankPage }];
     }
 
     if (!useCover) {
         // No-cover mode starts immediately at Page 1 (left) and Page 2 (right).
-        const sheetCount = Math.max(2, Math.ceil(pageNodes.length / 2) + 1);
+        const sheetCount = Math.max(1, Math.ceil((pageNodes.length + 1) / 2));
         const sheets = [];
 
         for (let i = 0; i < sheetCount; i += 1) {
@@ -82,21 +73,25 @@ function buildSheetsFromPages(pages, orientation, useCover) {
         return sheets;
     }
 
-    const sheetCount = Math.max(1, Math.ceil((pageNodes.length + 2) / 2));
+    // Cover mode: first uploaded page becomes the front cover artwork.
+    const coverNode = pageNodes[0] || coverFront;
+    const insidePages = pageNodes.slice(1);
+    const sheetCount = Math.max(1, Math.ceil((insidePages.length + 1) / 2));
     const sheets = [];
+    let insideCursor = 0;
 
     for (let i = 0; i < sheetCount; i += 1) {
         if (i === 0) {
             sheets.push({
-                front: coverFront,
-                back: i === sheetCount - 1 ? backCover : pageNodes[0] || blankPage
+                front: coverNode,
+                back: insidePages[insideCursor++] || blankPage
             });
             continue;
         }
 
         sheets.push({
-            front: pageNodes[2 * i - 1] || blankPage,
-            back: i === sheetCount - 1 ? backCover : pageNodes[2 * i] || blankPage
+            front: insidePages[insideCursor++] || blankPage,
+            back: insidePages[insideCursor++] || blankPage
         });
     }
 
@@ -331,6 +326,7 @@ export function FlipbookStudio() {
                     orientation={orientation}
                     showEmbeddedControls={false}
                     useCover={useCover}
+                    contentPageCount={pages.length}
                 />
             )}
         </section>
