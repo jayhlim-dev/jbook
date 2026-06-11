@@ -17,56 +17,57 @@ const DEFAULT_SHEETS = [
     {
         front: (
             <>
-                <h3>Chapter 1</h3>
-                <p>Once upon a time, this first sheet started the story with a calm morning and a quiet village.</p>
+                <h3>The Moon Journal</h3>
+                <p>A short illustrated tale.</p>
+                <p>Press Next to open the cover.</p>
             </>
         ),
         back: (
             <>
-                <h3>Chapter 1 (Back)</h3>
-                <p>The wind changed, a letter arrived, and everything began to move toward adventure.</p>
+                <h3>Page 1</h3>
+                <p>The letter arrived before sunrise, with wax still warm from a distant city.</p>
             </>
         )
     },
     {
         front: (
             <>
-                <h3>Chapter 2</h3>
-                <p>Through forests and old bridges, the hero followed clues hidden inside weathered journals.</p>
+                <h3>Page 2</h3>
+                <p>By noon they crossed the bridge, following marks carved under the old stone rail.</p>
             </>
         ),
         back: (
             <>
-                <h3>Chapter 2 (Back)</h3>
-                <p>By dusk, a forgotten map finally revealed the path to the mountain observatory.</p>
+                <h3>Page 3</h3>
+                <p>In the valley, wind carried a melody that matched the symbols from the letter.</p>
             </>
         )
     },
     {
         front: (
             <>
-                <h3>Chapter 3</h3>
-                <p>Inside the observatory, gears turned slowly while moonlight traced symbols on the floor.</p>
+                <h3>Page 4</h3>
+                <p>The observatory doors opened with a metallic sigh, and starlight filled the chamber.</p>
             </>
         ),
         back: (
             <>
-                <h3>Chapter 3 (Back)</h3>
-                <p>With one final mechanism, the hidden room opened and the mystery gave its answer.</p>
+                <h3>Page 5</h3>
+                <p>A hidden room waited behind the clockwork wall, lined with hand-drawn constellations.</p>
             </>
         )
     },
     {
         front: (
             <>
-                <h3>Epilogue</h3>
-                <p>The village celebrated, the journals were archived, and new travelers came to learn the tale.</p>
+                <h3>Page 6</h3>
+                <p>At dawn they returned home, carrying stories written between ink and moonlight.</p>
             </>
         ),
         back: (
             <>
-                <h3>The End</h3>
-                <p>Close the cover, take a breath, and flip back anytime you want to revisit the story.</p>
+                <h3>Back Cover</h3>
+                <p>The End</p>
             </>
         )
     }
@@ -87,7 +88,10 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
 
     // Memoized total count keeps math and button logic simple.
     const totalSheets = useMemo(() => sheets.length, [sheets.length]);
-    const activeSheetLabel = Math.min(currentPage + 1, totalSheets);
+    const totalViews = totalSheets + 1;
+    const activeView = Math.min(currentPage + 1, totalViews);
+    const isClosedCover = currentPage === 0;
+    const isBackClosed = currentPage === totalSheets;
 
     // Keep local fullscreen state in sync if parent passes a different default.
     useEffect(() => {
@@ -198,7 +202,7 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
                 <header className="book-toolbar">
                     <h2>{title}</h2>
                     <p>
-                        Sheet {activeSheetLabel} of {totalSheets}
+                        Page {activeView} of {totalViews}
                     </p>
                 </header>
             )}
@@ -214,13 +218,19 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
 
             {/* Perspective scene gives depth to rotateY transforms */}
             <div className={`book-scene ${isFullscreen ? 'book-scene-overlay' : ''}`}>
-                <div className={`book ${isFullscreen ? 'book-overlay-size' : ''}`}>
+                <div
+                    className={`book ${isFullscreen ? 'book-overlay-size' : ''} ${isClosedCover ? 'book-closed' : ''} ${
+                        isBackClosed ? 'book-back-closed' : ''
+                    }`}
+                >
                     <div className="book-spine" />
+                    <div className="book-base-page book-base-left" />
+                    <div className="book-base-page book-base-right" />
 
-                    {/* Render from first to last; z-index keeps top sheet clickable/visible */}
+                    {/* Sheets live on the right side and flip from center spine to the left side. */}
                     {sheets.map((sheet, index) => {
                         const isFlipped = index < currentPage;
-                        const zIndex = totalSheets - index;
+                        const zIndex = isFlipped ? index + 1 : totalSheets - index + totalSheets;
 
                         return (
                             <Page
@@ -263,7 +273,7 @@ export function Book({ sheets = DEFAULT_SHEETS, title = '3D Page Flip Book', ful
                         Previous
                     </button>
                     <p>
-                        Sheet {activeSheetLabel} of {totalSheets}
+                        Page {activeView} of {totalViews}
                     </p>
                     <button
                         type="button"

@@ -80,40 +80,86 @@
 /* Book canvas where sheets are stacked */
 .book {
     position: relative;
-    width: min(100%, 48rem);
-    height: 30rem;
+    width: min(100%, 56rem);
+    aspect-ratio: 1.414 / 1;
+    height: auto;
     margin-inline: auto;
     border-radius: 0.5rem;
     transform-style: preserve-3d;
 }
 
 .book.book-overlay-size {
-    width: 100vw;
-    height: 100vh;
+    width: min(96vw, calc(94vh * 1.414));
+    height: auto;
     max-width: none;
-    border-radius: 0;
+    border-radius: 0.25rem;
 }
 
 /* Decorative spine for visual realism */
 .book-spine {
     position: absolute;
-    left: 0;
+    left: 50%;
     top: 0;
     bottom: 0;
-    width: 0.75rem;
-    border-radius: 0.5rem 0 0 0.5rem;
+    width: 0.5rem;
+    border-radius: 0.25rem;
     background: linear-gradient(
         180deg,
         color-mix(in oklab, var(--color-secondary) 85%, black),
         color-mix(in oklab, var(--color-secondary) 65%, black)
     );
-    transform: translateZ(2px);
+    transform: translate(-50%, 0) translateZ(2px);
+    z-index: 40;
+}
+
+/* Base pages establish a two-page A5 spread area. */
+.book-base-page {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    border: 1px solid color-mix(in oklab, white 15%, transparent);
+    background: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-primary) 18%, var(--color-secondary)),
+        color-mix(in oklab, var(--color-primary) 8%, var(--color-secondary))
+    );
+    box-shadow: 0 8px 60px color-mix(in oklab, black 10%, transparent);
+    opacity: 1;
+    transition: opacity 160ms ease 360ms;
+}
+
+.book-base-left {
+    left: 0;
+    border-right: none;
+    border-radius: 0.5rem 0 0 0.5rem;
+}
+
+.book-base-right {
+    right: 0;
+    border-left: none;
+    border-radius: 0 0.5rem 0.5rem 0;
+}
+
+/* Closed state: hide the left side so only the front cover is visible. */
+.book.book-closed .book-base-left {
+    opacity: 0;
+    transition-delay: 0ms;
+}
+
+/* Last state: hide right side so only back cover remains visible. */
+.book.book-back-closed .book-base-right {
+    opacity: 0;
+    transition-delay: 0ms;
 }
 
 /* One physical sheet (front + back) */
 .book-sheet {
     position: absolute;
-    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 50%;
     transform-origin: left center;
     transform-style: preserve-3d;
     transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -129,14 +175,14 @@
     position: absolute;
     inset: 0;
     padding: 2rem;
-    border-radius: 0.5rem;
+    border-radius: 0 0.5rem 0.5rem 0;
     border: 1px solid color-mix(in oklab, white 15%, transparent);
     background: linear-gradient(
         180deg,
         color-mix(in oklab, var(--color-primary) 22%, var(--color-secondary)),
         color-mix(in oklab, var(--color-primary) 10%, var(--color-secondary))
     );
-    box-shadow: 0 16px 40px color-mix(in oklab, black 45%, transparent);
+    box-shadow: 0 4px 10px color-mix(in oklab, black 12%, transparent);
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     display: grid;
@@ -157,6 +203,7 @@
 /* Back face must be rotated so it appears after turning */
 .book-face-back {
     transform: rotateY(180deg);
+    border-radius: 0.5rem 0 0 0.5rem;
 }
 
 /* Navigation controls */
