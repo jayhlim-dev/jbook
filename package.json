@@ -15,6 +15,7 @@
     "bright": "^1.0.0",
     "markdown-to-jsx": "^7.7.16",
     "next": "^16.0.8",
+    "pdfjs-dist": "^6.0.227",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "unique-names-generator": "^4.7.1"

@@ -4,34 +4,67 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Book } from './Book';
 
 const MAX_FILES = 10;
+const MAX_PAGES = 10;
+const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB per file
+const MAX_TOTAL_UPLOAD_BYTES = 60 * 1024 * 1024; // 60 MB combined
 
 function isSupportedFile(file) {
     return file.type.startsWith('image/') || file.type === 'application/pdf';
 }
 
-function mockPdfPageCount(file) {
-    // Mock conversion result for now (backend/PDF parser can replace this later).
-    return Math.max(2, Math.min(8, (file.size % 5) + 2));
+function formatBytes(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function createContentPageNode(page, orientation) {
-    if (page.type === 'image') {
-        return (
-            <div className="flipbook-media-fill">
-                <img src={page.src} alt={page.label} className="h-full w-full object-cover" />
-            </div>
-        );
+async function convertPdfToPageImages(file) {
+    // Lazy-load PDF.js so image-only flows stay fast.
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    // Use local bundled worker (no CDN dependency) for reliable loading.
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+    const data = await file.arrayBuffer();
+    let pdf;
+
+    try {
+        pdf = await pdfjs.getDocument({ data }).promise;
+    } catch (primaryError) {
+        // Fallback path: some files parse better through blob URL loading.
+        const blobUrl = URL.createObjectURL(file);
+        try {
+            pdf = await pdfjs.getDocument({ url: blobUrl }).promise;
+        } finally {
+            URL.revokeObjectURL(blobUrl);
+        }
+    }
+    const pageImages = [];
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+        const page = await pdf.getPage(pageNumber);
+        const baseViewport = page.getViewport({ scale: 1 });
+        const maxDim = 1800;
+        const scale = Math.min(maxDim / baseViewport.width, maxDim / baseViewport.height, 1.8);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d', { alpha: false });
+        if (!context) {
+            throw new Error('Canvas context unavailable while rendering PDF page.');
+        }
+
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+
+        await page.render({ canvasContext: context, viewport }).promise;
+        pageImages.push(canvas.toDataURL('image/jpeg', 0.92));
     }
 
+    return pageImages;
+}
+
+function createContentPageNode(page) {
     return (
-        <div className="flex h-full w-full flex-col justify-between rounded-sm border border-white/15 bg-black/15 p-6">
-            <div>
-                <p className="text-xs uppercase tracking-wide text-white/60">PDF Page</p>
-                <h3 className="mt-2 text-2xl font-bold">{page.label}</h3>
-            </div>
-            <p className="text-sm text-white/70">
-                Mock PDF conversion preview ({orientation}). Replace with real PDF rendering in backend integration.
-            </p>
+        <div className="flipbook-media-fill">
+            <img src={page.src} alt={page.label} className="h-full w-full object-cover" />
         </div>
     );
 }
@@ -49,10 +82,10 @@ function createCoverNode(title, subtitle) {
     );
 }
 
-function buildSheetsFromPages(pages, orientation, useCover) {
+function buildSheetsFromPages(pages, useCover) {
     const coverFront = createCoverNode('Your Flipbook', `${pages.length} generated page${pages.length === 1 ? '' : 's'}`);
     const blankPage = <div className="h-full w-full rounded-sm border border-white/10 bg-black/10" />;
-    const pageNodes = pages.map((page) => createContentPageNode(page, orientation));
+    const pageNodes = pages.map((page) => createContentPageNode(page));
 
     if (!pages.length) {
         return [{ front: coverFront, back: blankPage }];
@@ -105,10 +138,19 @@ export function FlipbookStudio() {
     const [generatedSheets, setGeneratedSheets] = useState([]);
     const [isReaderOpen, setIsReaderOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [isProcessingUploads, setIsProcessingUploads] = useState(false);
+    const [showLoadingModal, setShowLoadingModal] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadError, setUploadError] = useState('');
     const inputRef = useRef(null);
     const itemsRef = useRef(items);
 
     const totalCount = items.length;
+    const totalGeneratedPages = useMemo(
+        () => items.reduce((sum, item) => sum + (item.kind === 'image' ? 1 : item.pdfPages.length), 0),
+        [items]
+    );
+    const totalUploadedBytes = useMemo(() => items.reduce((sum, item) => sum + item.file.size, 0), [items]);
 
     const pages = useMemo(() => {
         return items.flatMap((item) => {
@@ -116,76 +158,157 @@ export function FlipbookStudio() {
                 return [{ type: 'image', src: item.previewUrl, label: item.file.name }];
             }
 
-            return Array.from({ length: item.mockPages }, (_, index) => ({
-                type: 'pdf',
+            return item.pdfPages.map((src, index) => ({
+                type: 'image',
+                src,
                 label: `${item.file.name} - Page ${index + 1}`
             }));
         });
     }, [items]);
 
-    function addFiles(fileList) {
+    async function addFiles(fileList) {
         if (!fileList?.length) return;
         const incoming = Array.from(fileList).filter(isSupportedFile);
         if (!incoming.length) return;
+        setUploadError('');
+        setIsProcessingUploads(true);
 
-        setItems((prev) => {
-            const availableSlots = Math.max(0, MAX_FILES - prev.length);
-            const accepted = incoming.slice(0, availableSlots).map((file) => ({
-                id: crypto.randomUUID(),
-                file,
-                kind: file.type.startsWith('image/') ? 'image' : 'pdf',
-                previewUrl: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
-                mockPages: file.type === 'application/pdf' ? mockPdfPageCount(file) : 0
-            }));
+        try {
+            const availableSlots = Math.max(0, MAX_FILES - itemsRef.current.length);
+            const accepted = incoming.slice(0, availableSlots);
+            const prepared = [];
+            const failedFiles = [];
+            let pageSlotsRemaining = Math.max(0, MAX_PAGES - totalGeneratedPages);
+            let bytesRemaining = Math.max(0, MAX_TOTAL_UPLOAD_BYTES - totalUploadedBytes);
 
-            return [...prev, ...accepted];
-        });
+            for (const file of accepted) {
+                if (file.size > MAX_FILE_SIZE_BYTES) {
+                    failedFiles.push(
+                        `${file.name} (${formatBytes(file.size)} too large, max ${formatBytes(MAX_FILE_SIZE_BYTES)} — please compress first)`
+                    );
+                    continue;
+                }
+
+                if (file.size > bytesRemaining) {
+                    failedFiles.push(
+                        `${file.name} (total upload limit ${formatBytes(MAX_TOTAL_UPLOAD_BYTES)} reached — please compress files)`
+                    );
+                    continue;
+                }
+
+                if (pageSlotsRemaining <= 0) {
+                    failedFiles.push(`${file.name} (page limit reached: max ${MAX_PAGES})`);
+                    continue;
+                }
+
+                if (file.type.startsWith('image/')) {
+                    prepared.push({
+                        id: crypto.randomUUID(),
+                        file,
+                        kind: 'image',
+                        previewUrl: URL.createObjectURL(file),
+                        pdfPages: []
+                    });
+                    pageSlotsRemaining -= 1;
+                    bytesRemaining -= file.size;
+                    continue;
+                }
+
+                try {
+                    const pdfPages = await convertPdfToPageImages(file);
+                    const allowedPages = pdfPages.slice(0, pageSlotsRemaining);
+                    if (!allowedPages.length) {
+                        failedFiles.push(`${file.name} (no page slots remaining)`);
+                        continue;
+                    }
+
+                    if (allowedPages.length < pdfPages.length) {
+                        failedFiles.push(`${file.name} (trimmed to ${allowedPages.length} pages due to max ${MAX_PAGES})`);
+                    }
+
+                    prepared.push({
+                        id: crypto.randomUUID(),
+                        file,
+                        kind: 'pdf',
+                        previewUrl: allowedPages[0] || '',
+                        pdfPages: allowedPages
+                    });
+                    pageSlotsRemaining -= allowedPages.length;
+                    bytesRemaining -= file.size;
+                } catch (error) {
+                    failedFiles.push(`${file.name} (${error?.message || 'unknown error'})`);
+                }
+            }
+
+            if (failedFiles.length) {
+                setUploadError(`Could not read PDF: ${failedFiles.join('; ')}`);
+            }
+
+            if (prepared.length) {
+                setItems((prev) => [...prev, ...prepared]);
+            }
+        } finally {
+            setIsProcessingUploads(false);
+        }
     }
 
     function removeItem(id) {
         setItems((prev) => {
             const target = prev.find((item) => item.id === id);
-            if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl);
+            if (target?.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(target.previewUrl);
             return prev.filter((item) => item.id !== id);
         });
     }
 
     function handleFileInput(event) {
-        addFiles(event.target.files);
+        void addFiles(event.target.files);
         event.target.value = '';
     }
 
     function generateBook(openReader = true) {
-        const sheets = buildSheetsFromPages(pages, orientation, useCover);
+        const sheets = buildSheetsFromPages(pages, useCover);
         setGeneratedSheets(sheets);
         if (openReader) setIsReaderOpen(true);
     }
-
-    // Auto-generate after upload so users immediately get a readable book.
-    useEffect(() => {
-        if (!items.length) {
-            setGeneratedSheets([]);
-            setIsReaderOpen(false);
-            return;
-        }
-        generateBook(true);
-    }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // Orientation updates regenerate sheets without forcing fullscreen reopen.
-    useEffect(() => {
-        if (!items.length) return;
-        generateBook(false);
-    }, [orientation, useCover]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         itemsRef.current = items;
     }, [items]);
 
+    // Fake progress animation: climbs while processing, completes only when upload truly ends.
+    useEffect(() => {
+        if (isProcessingUploads) {
+            setShowLoadingModal(true);
+            setUploadProgress((prev) => (prev > 1 ? prev : 1));
+
+            const timer = setInterval(() => {
+                setUploadProgress((prev) => {
+                    // Progress intentionally slows down near the end to avoid "stuck at 92%" perception.
+                    if (prev >= 88) return prev;
+                    const step = prev < 18 ? 2.2 : prev < 38 ? 1.6 : prev < 58 ? 1.1 : prev < 74 ? 0.8 : 0.4;
+                    return Math.min(prev + step, 88);
+                });
+            }, 380);
+
+            return () => clearInterval(timer);
+        }
+
+        if (!showLoadingModal) return;
+
+        setUploadProgress(100);
+        const closeTimer = setTimeout(() => {
+            setShowLoadingModal(false);
+            setUploadProgress(0);
+        }, 460);
+
+        return () => clearTimeout(closeTimer);
+    }, [isProcessingUploads, showLoadingModal]);
+
     // Revoke any remaining object URLs only when the studio unmounts.
     useEffect(() => {
         return () => {
             itemsRef.current.forEach((item) => {
-                if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+                if (item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
             });
         };
     }, []);
@@ -193,19 +316,11 @@ export function FlipbookStudio() {
     return (
         <section className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
             <div className="rounded-2xl border border-white/10 bg-black/15 p-6 shadow-[0_12px_34px_rgba(0,0,0,0.2)] sm:p-8">
-                <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="mb-8">
                     <div>
                         <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Create a flipbook from images or PDFs</h1>
                         <p className="mt-2 text-white/70">Upload files, preview pages, and open your generated book instantly.</p>
                     </div>
-                    <button
-                        type="button"
-                        className="book-button w-full sm:w-auto"
-                        onClick={() => generateBook(true)}
-                        disabled={!items.length}
-                    >
-                        Generate Book
-                    </button>
                 </div>
 
                 {/* Orientation selector */}
@@ -258,11 +373,14 @@ export function FlipbookStudio() {
                     onDrop={(event) => {
                         event.preventDefault();
                         setIsDragging(false);
-                        addFiles(event.dataTransfer.files);
+                        void addFiles(event.dataTransfer.files);
                     }}
                 >
                     <p className="text-lg font-semibold">Drag & drop images or PDFs here</p>
-                    <p className="mt-2 text-sm text-white/70">Up to {MAX_FILES} files. Supported: image/*, .pdf</p>
+                    <p className="mt-2 text-sm text-white/70">
+                        Max {MAX_PAGES} generated pages, {MAX_FILES} source files, {formatBytes(MAX_FILE_SIZE_BYTES)} per file,
+                        {formatBytes(MAX_TOTAL_UPLOAD_BYTES)} total. Supported: image/*, .pdf
+                    </p>
                     <div className="mt-5">
                         <input
                             ref={inputRef}
@@ -272,13 +390,36 @@ export function FlipbookStudio() {
                             className="hidden"
                             onChange={handleFileInput}
                         />
-                        <button type="button" className="book-button" onClick={() => inputRef.current?.click()}>
-                            Choose Files
+                        <button
+                            type="button"
+                            className="book-button"
+                            onClick={() => inputRef.current?.click()}
+                            disabled={isProcessingUploads}
+                        >
+                            {isProcessingUploads ? 'Processing...' : 'Choose Files'}
                         </button>
                     </div>
                     <p className="mt-3 text-xs text-white/60">
-                        {totalCount}/{MAX_FILES} files selected
+                        {totalGeneratedPages}/{MAX_PAGES} pages from {totalCount}/{MAX_FILES} files ({formatBytes(totalUploadedBytes)} used)
                     </p>
+                    {uploadError && <p className="mt-2 text-xs text-red-300">{uploadError}</p>}
+                </div>
+
+                {/* Primary action sits after upload for better flow/UX. */}
+                <div className="mt-6 flex flex-col gap-3 rounded-lg border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-white/75">
+                        {items.length
+                            ? `Ready to generate ${totalGeneratedPages} page${totalGeneratedPages > 1 ? 's' : ''} from ${items.length} source file${items.length > 1 ? 's' : ''}.`
+                            : 'Upload at least one image or PDF to generate your book.'}
+                    </p>
+                    <button
+                        type="button"
+                        className="book-button w-full sm:w-auto"
+                        onClick={() => generateBook(true)}
+                        disabled={!items.length || isProcessingUploads}
+                    >
+                        Generate Book
+                    </button>
                 </div>
 
                 {/* Preview section */}
@@ -293,14 +434,14 @@ export function FlipbookStudio() {
                                         {item.kind === 'image' ? (
                                             <img src={item.previewUrl} alt={item.file.name} className="h-full w-full object-cover" />
                                         ) : (
-                                            <div className="flex h-full items-center justify-center text-sm text-white/80">
-                                                PDF · {item.mockPages} pages (mock)
-                                            </div>
+                                            <img src={item.previewUrl} alt={item.file.name} className="h-full w-full object-cover" />
                                         )}
                                     </div>
                                     <p className="truncate text-sm font-semibold">{item.file.name}</p>
                                     <div className="mt-3 flex items-center justify-between">
-                                        <p className="text-xs text-white/60">{item.kind === 'image' ? 'Image page' : 'PDF source'}</p>
+                                        <p className="text-xs text-white/60">
+                                            {item.kind === 'image' ? 'Image page' : `PDF · ${item.pdfPages.length} pages`}
+                                        </p>
                                         <button
                                             type="button"
                                             className="text-xs font-semibold text-red-300 hover:text-red-200"
@@ -328,6 +469,25 @@ export function FlipbookStudio() {
                     useCover={useCover}
                     contentPageCount={pages.length}
                 />
+            )}
+
+            {/* Upload/loading modal with fake progress that completes on real finish. */}
+            {showLoadingModal && (
+                <div className="fixed inset-0 z-100 grid place-items-center bg-black/55 px-4">
+                    <div className="w-full max-w-md rounded-xl border border-white/20 bg-slate-900/95 p-5 shadow-2xl">
+                        <p className="text-sm uppercase tracking-[0.2em] text-white/55">Processing</p>
+                        <h3 className="mt-2 text-xl font-bold text-white">Preparing your flipbook...</h3>
+                        <p className="mt-2 text-sm text-white/70">Converting files and generating book pages.</p>
+
+                        <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-white/15">
+                            <div
+                                className="h-full rounded-full bg-cyan-400 transition-[width] duration-200 ease-out"
+                                style={{ width: `${uploadProgress}%` }}
+                            />
+                        </div>
+                        <p className="mt-2 text-right text-sm font-semibold text-white/80">{Math.round(uploadProgress)}%</p>
+                    </div>
+                </div>
             )}
         </section>
     );
