@@ -299,185 +299,201 @@ export function FlipbookStudio() {
     }, []);
 
     return (
-        <section className="relative mx-auto w-full max-w-6xl overflow-hidden px-4 py-10 sm:px-6">
-            <div className="pointer-events-none absolute -left-24 -top-20 h-60 w-60 rounded-full bg-fuchsia-400/25 blur-3xl" />
-            <div className="pointer-events-none absolute -right-20 top-32 h-72 w-72 rounded-full bg-cyan-300/25 blur-3xl" />
-            <div className="pointer-events-none absolute bottom-6 left-1/3 h-56 w-56 rounded-full bg-violet-400/20 blur-3xl" />
+        <section className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*,.pdf,application/pdf"
+                multiple
+                className="hidden"
+                onChange={handleFileInput}
+            />
 
-            <div className="relative rounded-3xl border border-cyan-300/30 bg-linear-to-b from-cyan-300/18 via-slate-900/75 to-slate-950/85 p-6 shadow-[0_20px_48px_rgba(0,0,0,0.4)] backdrop-blur-sm sm:p-8">
-                <div>
-                    <h1 className="text-4xl font-black tracking-tight sm:text-6xl">Make your flipbook look premium fast</h1>
-                    <p className="mt-3 max-w-2xl text-lg font-medium text-white/80 sm:text-xl">Upload. Generate. Share.</p>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                        <span className="rounded-full border border-white/20 bg-white/8 px-4 py-1.5 text-sm font-semibold text-white/90">
-                            Client-ready
-                        </span>
-                        <span className="rounded-full border border-white/20 bg-white/8 px-4 py-1.5 text-sm font-semibold text-white/90">
-                            Super quick
-                        </span>
-                        <span className="rounded-full border border-white/20 bg-white/8 px-4 py-1.5 text-sm font-semibold text-white/90">
-                            Zero setup
-                        </span>
+            <div className="rounded-[30px] border border-slate-200/80 bg-white/95 p-4 text-slate-900 shadow-[0_20px_70px_rgba(15,23,42,0.08)] backdrop-blur sm:p-6">
+                <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                    <div className="flex items-center gap-10">
+                        <img src="/images/logo/main-logo-black.png" alt="Flipy logo" className="h-10 w-auto" />
+                        <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 lg:flex">
+                            <button type="button" className="text-indigo-600">
+                                Home
+                            </button>
+                            <button type="button">My Books</button>
+                            <button type="button">Templates</button>
+                            <button type="button">Pricing</button>
+                            <button type="button">Resources</button>
+                        </nav>
                     </div>
-                </div>
-
-                <div className="mt-8 rounded-2xl border border-white/20 bg-black/30 p-5 sm:p-6">
-                    <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Build your book</h2>
-                            <p className="mt-1 text-base text-white/75">Pick options, drop files, generate.</p>
-                        </div>
+                    <div className="flex items-center gap-2">
+                        <button type="button" className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">
+                            Log in
+                        </button>
+                        <button type="button" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500">
+                            Sign up free
+                        </button>
                     </div>
+                </header>
 
-                    {/* Orientation selector */}
-                    <div className="mb-6">
-                        <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-white/70">Orientation</p>
-                        <div className="flex flex-wrap gap-3">
-                            {['portrait', 'landscape'].map((mode) => (
-                                <button
-                                    key={mode}
-                                    type="button"
-                                    onClick={() => setOrientation(mode)}
-                                className={`rounded-xl border px-5 py-2.5 text-base font-semibold transition ${
-                                        orientation === mode
-                                            ? 'border-cyan-200/80 bg-cyan-300/25 text-white'
-                                            : 'border-white/20 bg-transparent text-white/75 hover:border-white/40'
-                                    }`}
-                                >
-                                    {mode === 'portrait' ? 'Portrait Mode' : 'Landscape Mode'}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Cover option */}
-                    <div className="mb-6">
-                        <label className="inline-flex cursor-pointer items-center gap-3 text-base font-semibold text-white/90">
-                            <input
-                                type="checkbox"
-                                checked={useCover}
-                                onChange={(event) => setUseCover(event.target.checked)}
-                                className="h-4 w-4 accent-cyan-400"
-                            />
-                            Include cover page
-                        </label>
-                        <p className="mt-2 text-xs text-white/60">
-                            If disabled, the book opens directly on Page 1 (left) and Page 2 (right).
+                <div className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.25fr]">
+                    <section className="rounded-3xl bg-[#f6f5fb] p-6">
+                        <span className="inline-flex rounded-full bg-indigo-100 px-4 py-1 text-sm font-semibold text-indigo-700">
+                            Create. Upload. Flip.
+                        </span>
+                        <h1 className="mt-4 text-4xl font-black leading-tight text-slate-900 sm:text-5xl">
+                            Turn your PDFs and images into beautiful <span className="text-indigo-600">flipbooks.</span>
+                        </h1>
+                        <p className="mt-4 text-lg text-slate-600">
+                            Upload your PDF or PNG files and we will turn them into a realistic flipbook in seconds.
                         </p>
-                    </div>
 
-                    {/* Upload area with drag-and-drop and picker */}
-                    <div
-                        className={`rounded-2xl border-2 border-dashed p-8 text-center transition ${
-                            isDragging ? 'border-primary bg-primary/10' : 'border-white/25 bg-white/5'
-                        }`}
-                        onDragOver={(event) => {
-                            event.preventDefault();
-                            setIsDragging(true);
-                        }}
-                        onDragLeave={() => setIsDragging(false)}
-                        onDrop={(event) => {
-                            event.preventDefault();
-                            setIsDragging(false);
-                            void addFiles(event.dataTransfer.files);
-                        }}
-                    >
-                        <p className="text-2xl font-bold">Drop your files</p>
-                        <p className="mt-2 text-base text-white/75">
-                            Max {MAX_PAGES} generated pages, {MAX_FILES} source files, {formatBytes(MAX_FILE_SIZE_BYTES)} per file,
-                            {formatBytes(MAX_TOTAL_UPLOAD_BYTES)} total. Supported: image/*, .pdf
-                        </p>
-                        <div className="mt-5">
-                            <input
-                                ref={inputRef}
-                                type="file"
-                                accept="image/*,.pdf,application/pdf"
-                                multiple
-                                className="hidden"
-                                onChange={handleFileInput}
-                            />
+                        <div className="mt-6 flex flex-wrap gap-3">
                             <button
                                 type="button"
-                                className="book-button px-7 py-3 text-base"
+                                className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
                                 onClick={() => inputRef.current?.click()}
                                 disabled={isProcessingUploads}
                             >
-                                {isProcessingUploads ? 'Processing...' : 'Choose Files'}
+                                {isProcessingUploads ? 'Processing...' : 'Upload Your File'}
+                            </button>
+                            <button
+                                type="button"
+                                className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                                onClick={() => void generateBook(true)}
+                                disabled={!items.length || isProcessingUploads || isSavingBook}
+                            >
+                                {isSavingBook ? 'Saving...' : 'Try Demo'}
                             </button>
                         </div>
-                        <p className="mt-3 text-xs text-white/60">
-                            {totalGeneratedPages}/{MAX_PAGES} pages from {totalCount}/{MAX_FILES} files (
-                            {formatBytes(totalUploadedBytes)} used)
-                        </p>
-                        {uploadError && <p className="mt-2 text-xs text-red-300">{uploadError}</p>}
-                    </div>
 
-                    {/* Primary action sits after upload for better flow/UX. */}
-                    <div className="mt-6 flex flex-col gap-3 rounded-xl border border-white/15 bg-white/8 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-base text-white/80">
-                            {items.length
-                                ? `Ready to generate ${totalGeneratedPages} page${totalGeneratedPages > 1 ? 's' : ''} from ${items.length} source file${items.length > 1 ? 's' : ''}.`
-                                : 'Add at least one image or PDF to continue.'}
-                        </p>
-                        <button
-                            type="button"
-                            className="book-button w-full px-7 py-3 text-base sm:w-auto"
-                            onClick={() => void generateBook(true)}
-                            disabled={!items.length || isProcessingUploads || isSavingBook}
-                        >
-                            {isSavingBook ? 'Saving to Cloud...' : 'Generate Book'}
-                        </button>
-                    </div>
-                    {cloudSaveError && <p className="mt-3 text-sm font-medium text-red-300">{cloudSaveError}</p>}
-                    {cloudSaveMessage && <p className="mt-3 text-sm font-medium text-cyan-200">{cloudSaveMessage}</p>}
-                </div>
+                        <p className="mt-3 text-sm text-slate-500">PDF, PNG, JPG or ZIP. Max {formatBytes(MAX_TOTAL_UPLOAD_BYTES)}</p>
 
-                {/* Preview section */}
-                <div className="mt-8">
-                    <h2 className="mb-4 text-2xl font-bold">Asset preview</h2>
-                    {!items.length && <p className="text-sm text-white/70">No files yet. Upload files to generate pages.</p>}
-                    {!!items.length && (
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {items.map((item) => (
-                                <article key={item.id} className="rounded-lg border border-white/15 bg-black/20 p-3">
-                                    <div className="mb-3 aspect-4/3 overflow-hidden rounded-md border border-white/10 bg-black/20">
-                                        <img src={item.previewUrl} alt={item.file.name} className="h-full w-full object-cover" />
-                                    </div>
-                                    <p className="truncate text-sm font-semibold">{item.file.name}</p>
-                                    <div className="mt-3 flex items-center justify-between">
-                                        <p className="text-xs text-white/60">
-                                            {item.kind === 'image' ? 'Image page' : `PDF · ${item.pdfPages.length} pages`}
-                                        </p>
-                                        <button
-                                            type="button"
-                                            className="text-xs font-semibold text-red-300 hover:text-red-200"
-                                            onClick={() => removeItem(item.id)}
-                                        >
-                                            Remove
-                                        </button>
-                                    </div>
-                                </article>
-                            ))}
+                        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="mb-4 flex flex-wrap items-center gap-3">
+                                {['portrait', 'landscape'].map((mode) => (
+                                    <button
+                                        key={mode}
+                                        type="button"
+                                        onClick={() => setOrientation(mode)}
+                                        className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                                            orientation === mode
+                                                ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                                                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        {mode === 'portrait' ? 'Portrait' : 'Landscape'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <label className="mb-3 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+                                <input
+                                    type="checkbox"
+                                    checked={useCover}
+                                    onChange={(event) => setUseCover(event.target.checked)}
+                                    className="h-4 w-4 accent-indigo-600"
+                                />
+                                Include cover page
+                            </label>
+
+                            <div
+                                className={`rounded-xl border-2 border-dashed p-5 text-center transition ${
+                                    isDragging ? 'border-indigo-400 bg-indigo-50' : 'border-slate-300 bg-slate-50'
+                                }`}
+                                onDragOver={(event) => {
+                                    event.preventDefault();
+                                    setIsDragging(true);
+                                }}
+                                onDragLeave={() => setIsDragging(false)}
+                                onDrop={(event) => {
+                                    event.preventDefault();
+                                    setIsDragging(false);
+                                    void addFiles(event.dataTransfer.files);
+                                }}
+                            >
+                                <p className="text-sm font-semibold text-slate-700">Drag and drop files here</p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {totalGeneratedPages}/{MAX_PAGES} pages from {totalCount}/{MAX_FILES} files (
+                                    {formatBytes(totalUploadedBytes)} used)
+                                </p>
+                            </div>
                         </div>
-                    )}
+                    </section>
+
+                    <section className="rounded-3xl bg-[#f8f7fc] p-5">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                            <div className="aspect-16/10 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                {items[0]?.previewUrl ? (
+                                    <img src={items[0].previewUrl} alt="Flipbook preview" className="h-full w-full object-cover" />
+                                ) : (
+                                    <div className="grid h-full place-items-center text-center text-slate-500">
+                                        <div>
+                                            <p className="text-sm font-semibold">Flipbook preview</p>
+                                            <p className="mt-1 text-xs">Upload files to see live preview thumbnails.</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-100 px-4 py-2 text-sm text-slate-600">
+                                <p>
+                                    {items.length
+                                        ? `Ready to generate ${totalGeneratedPages} page${totalGeneratedPages > 1 ? 's' : ''}.`
+                                        : 'No pages yet'}
+                                </p>
+                                <button
+                                    type="button"
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                    onClick={() => void generateBook(true)}
+                                    disabled={!items.length || isProcessingUploads || isSavingBook}
+                                >
+                                    {isSavingBook ? 'Saving to Cloud...' : 'Generate Book'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                            <article className="rounded-2xl border border-slate-200 bg-white p-4">
+                                <h3 className="text-lg font-bold text-slate-900">Everything you need</h3>
+                                <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                                    <li>Easy upload and conversion</li>
+                                    <li>Realistic page flip effect</li>
+                                    <li>Brand-ready output</li>
+                                </ul>
+                            </article>
+                            <article className="rounded-2xl border border-slate-200 bg-white p-4">
+                                <h3 className="text-lg font-bold text-slate-900">Recent books</h3>
+                                <p className="mt-3 text-sm text-slate-600">
+                                    {items.length ? `${items.length} source file${items.length > 1 ? 's' : ''} loaded` : 'No recent book yet'}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">Generate a new book to get your unique share URL.</p>
+                            </article>
+                        </div>
+                    </section>
                 </div>
+
+                {(uploadError || cloudSaveError || cloudSaveMessage) && (
+                    <div className="mt-5 space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                        {uploadError && <p className="font-medium text-red-600">{uploadError}</p>}
+                        {cloudSaveError && <p className="font-medium text-red-600">{cloudSaveError}</p>}
+                        {cloudSaveMessage && <p className="font-medium text-emerald-700">{cloudSaveMessage}</p>}
+                    </div>
+                )}
             </div>
 
             {/* Upload/loading modal with fake progress that completes on real finish. */}
             {showLoadingModal && (
                 <div className="fixed inset-0 z-100 grid place-items-center bg-black/55 px-4">
-                    <div className="w-full max-w-md rounded-xl border border-white/20 bg-slate-900/95 p-5 shadow-2xl">
-                        <p className="text-sm uppercase tracking-[0.2em] text-white/55">Processing</p>
-                        <h3 className="mt-2 text-xl font-bold text-white">Preparing your flipbook...</h3>
-                        <p className="mt-2 text-sm text-white/70">Converting files and generating book pages.</p>
+                    <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl">
+                        <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Processing</p>
+                        <h3 className="mt-2 text-xl font-bold">Preparing your flipbook...</h3>
+                        <p className="mt-2 text-sm text-slate-600">Converting files and generating book pages.</p>
 
-                        <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-white/15">
+                        <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
                             <div
-                                className="h-full rounded-full bg-cyan-400 transition-[width] duration-200 ease-out"
+                                className="h-full rounded-full bg-indigo-600 transition-[width] duration-200 ease-out"
                                 style={{ width: `${uploadProgress}%` }}
                             />
                         </div>
-                        <p className="mt-2 text-right text-sm font-semibold text-white/80">{Math.round(uploadProgress)}%</p>
+                        <p className="mt-2 text-right text-sm font-semibold text-slate-600">{Math.round(uploadProgress)}%</p>
                     </div>
                 </div>
             )}

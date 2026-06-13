@@ -15,10 +15,10 @@ export default function RootLayout({ children }) {
             <head>
                 <link rel="icon" href="/favicon.svg" sizes="any" />
             </head>
-            <body className="antialiased text-white bg-slate-950">
-                <div className="relative flex min-h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_15%_12%,rgba(34,211,238,0.22),transparent_35%),radial-gradient(circle_at_85%_15%,rgba(244,114,182,0.2),transparent_32%),radial-gradient(circle_at_48%_100%,rgba(167,139,250,0.24),transparent_40%),linear-gradient(180deg,#020617,#111827_55%,#1e1b4b)] px-6 sm:px-12">
-                    <div className="pointer-events-none absolute inset-0 bg-noise opacity-35 mix-blend-soft-light" />
-                    <div className="relative flex w-full max-w-5xl grow flex-col mx-auto">
+            <body className="bg-[#f4f5fb] antialiased text-slate-900">
+                <div className="relative flex min-h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_15%_12%,rgba(120,98,255,0.09),transparent_35%),radial-gradient(circle_at_80%_18%,rgba(94,234,212,0.08),transparent_32%),linear-gradient(180deg,#f4f5fb,#eef1f9_55%,#e9edf7)] px-3 sm:px-6">
+                    <div className="pointer-events-none absolute inset-0 bg-noise opacity-25 mix-blend-overlay" />
+                    <div className="relative mx-auto flex w-full max-w-7xl grow flex-col">
                         {/* <Header /> */}
                         <main className="grow">{children}</main>
                         {/* <Footer /> */}
