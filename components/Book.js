@@ -76,12 +76,13 @@ const DEFAULT_SHEETS = [
 /**
  * Book container handling navigation and sheet stacking.
  * Uses pure CSS 3D transforms (no external page-flip library).
- * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean, contentPageCount?: number }} props
+ * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, lockFullscreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean, contentPageCount?: number }} props
  */
 export function Book({
     sheets = DEFAULT_SHEETS,
     title = '3D Page Flip Book',
     fullScreen = false,
+    lockFullscreen = false,
     onRequestClose,
     orientation = 'portrait',
     showEmbeddedControls = true,
@@ -109,8 +110,8 @@ export function Book({
 
     // Keep local fullscreen state in sync if parent passes a different default.
     useEffect(() => {
-        setIsFullscreen(fullScreen);
-    }, [fullScreen]);
+        setIsFullscreen(lockFullscreen ? true : fullScreen);
+    }, [fullScreen, lockFullscreen]);
 
     // Reset reading position when sheet set or cover mode changes.
     useEffect(() => {
@@ -211,6 +212,7 @@ export function Book({
     }
 
     function closeFullscreen() {
+        if (lockFullscreen) return;
         setIsFullscreen(false);
         if (onRequestClose) onRequestClose();
     }
@@ -265,9 +267,11 @@ export function Book({
             {isFullscreen && (
                 <header className={`book-overlay-top ${showOverlayUi ? '' : 'controls-hidden'}`}>
                     <h2>{title}</h2>
-                    <button type="button" className="book-button" onClick={closeFullscreen}>
-                        Exit Full Screen
-                    </button>
+                    {!lockFullscreen && (
+                        <button type="button" className="book-button" onClick={closeFullscreen}>
+                            Exit Full Screen
+                        </button>
+                    )}
                 </header>
             )}
 
@@ -309,15 +313,15 @@ export function Book({
             {/* Standard controls for non-fullscreen mode */}
             {!isFullscreen && showEmbeddedControls && (
                 <div className="book-controls">
-                    <button type="button" className="book-button" onClick={goPrevious} disabled={currentPage === minPage}>
-                        Previous
-                    </button>
                     <button
                         type="button"
                         className="book-button"
-                        onClick={goNext}
-                        disabled={currentPage === maxPage}
+                        onClick={goPrevious}
+                        disabled={currentPage === minPage}
                     >
+                        Previous
+                    </button>
+                    <button type="button" className="book-button" onClick={goNext} disabled={currentPage === maxPage}>
                         Next
                     </button>
                     <button type="button" className="book-button" onClick={() => setIsFullscreen(true)}>
@@ -329,18 +333,18 @@ export function Book({
             {/* Netflix-like bottom bar while in fullscreen mode */}
             {isFullscreen && (
                 <footer className={`book-overlay-bottom ${showOverlayUi ? '' : 'controls-hidden'}`}>
-                    <button type="button" className="book-button" onClick={goPrevious} disabled={currentPage === minPage}>
+                    <button
+                        type="button"
+                        className="book-button"
+                        onClick={goPrevious}
+                        disabled={currentPage === minPage}
+                    >
                         Previous
                     </button>
                     <p>
                         Page {activeView} of {totalViews}
                     </p>
-                    <button
-                        type="button"
-                        className="book-button"
-                        onClick={goNext}
-                        disabled={currentPage === maxPage}
-                    >
+                    <button type="button" className="book-button" onClick={goNext} disabled={currentPage === maxPage}>
                         Next
                     </button>
                 </footer>

@@ -160,6 +160,8 @@ export function HostedFlipbookViewer({ bookId }) {
             <Book
                 sheets={sheets}
                 title="Generated Flipbook"
+                fullScreen
+                lockFullscreen
                 orientation={bookData?.orientation || 'portrait'}
                 useCover={bookData?.useCover ?? true}
                 contentPageCount={pages.length}
