@@ -76,7 +76,7 @@ const DEFAULT_SHEETS = [
 /**
  * Book container handling navigation and sheet stacking.
  * Uses pure CSS 3D transforms (no external page-flip library).
- * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, lockFullscreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean, contentPageCount?: number }} props
+ * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, lockFullscreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean, contentPageCount?: number, fullscreenThumbnails?: Array<{ src: string, label?: string }>, overlayBackHref?: string, overlayBackLabel?: string }} props
  */
 export function Book({
     sheets = DEFAULT_SHEETS,
@@ -87,7 +87,10 @@ export function Book({
     orientation = 'portrait',
     showEmbeddedControls = true,
     useCover = true,
-    contentPageCount
+    contentPageCount,
+    fullscreenThumbnails = [],
+    overlayBackHref = '',
+    overlayBackLabel = 'Back'
 }) {
     const totalSheets = sheets.length;
     const resolvedContentPages = contentPageCount ?? Math.max(0, totalSheets * 2 - 2);
@@ -102,8 +105,10 @@ export function Book({
     const hideUiTimeoutRef = useRef(null);
     const lastMousePositionRef = useRef({ x: null, y: null });
     const touchStartXRef = useRef(null);
+    const suppressNextSceneClickRef = useRef(false);
     const totalViews = maxPage - minPage + 1;
     const activeView = currentPage - minPage + 1;
+    const activeThumbnailIndex = Math.max(0, currentPage - minPage);
     const progressPercent = Math.round((activeView / Math.max(totalViews, 1)) * 100);
     const remainingViews = Math.max(totalViews - activeView, 0);
     const isClosedCover = useCover && currentPage === 0;
@@ -221,6 +226,14 @@ export function Book({
 
     function onSceneClick(event) {
         if (!isFullscreen) return;
+        if (suppressNextSceneClickRef.current) {
+            suppressNextSceneClickRef.current = false;
+            return;
+        }
+        if (!showOverlayUi) {
+            setShowOverlayUi(true);
+            return;
+        }
         const rect = event.currentTarget.getBoundingClientRect();
         const isRightSide = event.clientX > rect.left + rect.width / 2;
         if (isRightSide) {
@@ -237,6 +250,14 @@ export function Book({
 
     function onSceneTouchEnd(event) {
         if (!isFullscreen || touchStartXRef.current === null) return;
+        if (!showOverlayUi) {
+            setShowOverlayUi(true);
+            // Mobile browsers often emit a synthetic click after touchend.
+            // Swallow that one so first tap only reveals controls.
+            suppressNextSceneClickRef.current = true;
+            touchStartXRef.current = null;
+            return;
+        }
         const endX = event.changedTouches[0]?.clientX ?? touchStartXRef.current;
         const delta = endX - touchStartXRef.current;
         touchStartXRef.current = null;
@@ -268,7 +289,14 @@ export function Book({
 
             {isFullscreen && (
                 <header className={`book-overlay-top ${showOverlayUi ? '' : 'controls-hidden'}`}>
-                    <h2>{title}</h2>
+                    <div className="book-overlay-top-left">
+                        {overlayBackHref && (
+                            <a href={overlayBackHref} className="book-button no-underline">
+                                {overlayBackLabel}
+                            </a>
+                        )}
+                        <h2>{title}</h2>
+                    </div>
                     {!lockFullscreen && (
                         <button type="button" className="book-button" onClick={closeFullscreen}>
                             Exit Full Screen
@@ -335,30 +363,49 @@ export function Book({
             {/* Netflix-like bottom bar while in fullscreen mode */}
             {isFullscreen && (
                 <footer className={`book-overlay-bottom ${showOverlayUi ? '' : 'controls-hidden'}`}>
-                    <button
-                        type="button"
-                        className="book-button"
-                        onClick={goPrevious}
-                        disabled={currentPage === minPage}
-                    >
-                        Previous
-                    </button>
+                    <div className="book-overlay-nav-row">
+                        <button
+                            type="button"
+                            className="book-button"
+                            onClick={goPrevious}
+                            disabled={currentPage === minPage}
+                        >
+                            Previous
+                        </button>
 
-                    <div className="book-overlay-progress">
-                        <div className="book-overlay-progress-top">
-                            <p>
-                                Page {activeView} of {totalViews}
-                            </p>
-                            <p>{remainingViews === 0 ? 'Last page' : `${remainingViews} page${remainingViews > 1 ? 's' : ''} left`}</p>
+                        <div className="book-overlay-progress">
+                            <div className="book-overlay-progress-top">
+                                <p>
+                                    Page {activeView} of {totalViews}
+                                </p>
+                                <p>{remainingViews === 0 ? 'Last page' : `${remainingViews} page${remainingViews > 1 ? 's' : ''} left`}</p>
+                            </div>
+                            <div className="book-overlay-progress-track" aria-hidden="true">
+                                <div className="book-overlay-progress-fill" style={{ width: `${progressPercent}%` }} />
+                            </div>
                         </div>
-                        <div className="book-overlay-progress-track" aria-hidden="true">
-                            <div className="book-overlay-progress-fill" style={{ width: `${progressPercent}%` }} />
-                        </div>
+
+                        <button type="button" className="book-button" onClick={goNext} disabled={currentPage === maxPage}>
+                            Next
+                        </button>
                     </div>
 
-                    <button type="button" className="book-button" onClick={goNext} disabled={currentPage === maxPage}>
-                        Next
-                    </button>
+                    {fullscreenThumbnails.length > 0 && (
+                        <div className="book-overlay-strip">
+                            {fullscreenThumbnails.map((thumbnail, index) => (
+                                <button
+                                    key={`${thumbnail.src}-${index}`}
+                                    type="button"
+                                    className={`book-overlay-strip-button ${activeThumbnailIndex === index ? 'active' : ''}`}
+                                    onClick={() => setCurrentPage(Math.min(maxPage, minPage + index))}
+                                    title={thumbnail.label || `Page ${index + 1}`}
+                                >
+                                    <img src={thumbnail.src} alt={thumbnail.label || `Page ${index + 1}`} />
+                                    <span>{index + 1}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </footer>
             )}
         </section>

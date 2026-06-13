@@ -58,6 +58,13 @@
     transition: opacity 220ms ease, transform 220ms ease;
 }
 
+.book-overlay-top-left {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    pointer-events: auto;
+}
+
 .book-overlay-top h2 {
     margin: 0;
     color: #111827;
@@ -289,13 +296,19 @@
     right: 0;
     bottom: 0;
     z-index: 90;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0 1rem 1.1rem;
+    pointer-events: none;
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.book-overlay-nav-row {
     display: grid;
     grid-template-columns: auto minmax(220px, 1fr) auto;
     align-items: center;
     gap: 0.75rem;
-    padding: 0 1rem 1.1rem;
-    pointer-events: none;
-    transition: opacity 220ms ease, transform 220ms ease;
 }
 
 .book-overlay-bottom .book-button {
@@ -362,6 +375,51 @@
     transition: width 220ms ease;
 }
 
+.book-overlay-strip {
+    pointer-events: auto;
+    display: flex;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding: 0.15rem 0.1rem 0.2rem;
+    scrollbar-width: thin;
+}
+
+.book-overlay-strip-button {
+    border: 1px solid #dbe2f0;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 0.6rem;
+    width: 66px;
+    flex: 0 0 66px;
+    padding: 0.2rem;
+    cursor: pointer;
+}
+
+.book-overlay-strip-button img {
+    width: 100%;
+    height: 62px;
+    object-fit: cover;
+    border-radius: 0.45rem;
+    display: block;
+}
+
+.book-overlay-strip-button span {
+    display: block;
+    margin-top: 0.18rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.book-overlay-strip-button.active {
+    border-color: #6366f1;
+    background: #eef2ff;
+}
+
+.book-overlay-bottom.controls-hidden .book-overlay-strip,
+.book-overlay-bottom.controls-hidden .book-overlay-strip-button {
+    pointer-events: none;
+}
+
 .book-overlay-top::before,
 .book-overlay-bottom::before {
     content: '';
@@ -379,7 +437,7 @@
 
 .book-overlay-bottom::before {
     bottom: 0;
-    height: 5rem;
+    height: 8rem;
     background: linear-gradient(0deg, rgba(255, 255, 255, 0.92), transparent);
 }
 
@@ -395,10 +453,9 @@
 }
 
 @media (max-width: 640px) {
-    .book-overlay-bottom {
+    .book-overlay-nav-row {
         grid-template-columns: 1fr;
         gap: 0.5rem;
-        padding-bottom: 0.75rem;
     }
 
     .book-overlay-bottom .book-button {
