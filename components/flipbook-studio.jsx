@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Book } from './Book';
+import { useRouter } from 'next/navigation';
 
 const MAX_FILES = 10;
 const MAX_PAGES = 10;
@@ -61,87 +61,19 @@ async function convertPdfToPageImages(file) {
     return pageImages;
 }
 
-function createContentPageNode(page) {
-    return (
-        <div className="flipbook-media-fill">
-            <img src={page.src} alt={page.label} className="h-full w-full object-cover" />
-        </div>
-    );
-}
-
-function createCoverNode(title, subtitle) {
-    return (
-        <div className="flex h-full flex-col justify-between">
-            <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/70">Flipbook Studio</p>
-                <h3 className="mt-3 text-3xl font-black">{title}</h3>
-                <p className="mt-2 text-white/80">{subtitle}</p>
-            </div>
-            <p className="text-sm text-white/65">Generated automatically from your uploads.</p>
-        </div>
-    );
-}
-
-function buildSheetsFromPages(pages, useCover) {
-    const coverFront = createCoverNode('Your Flipbook', `${pages.length} generated page${pages.length === 1 ? '' : 's'}`);
-    const blankPage = <div className="h-full w-full rounded-sm border border-white/10 bg-black/10" />;
-    const pageNodes = pages.map((page) => createContentPageNode(page));
-
-    if (!pages.length) {
-        return [{ front: coverFront, back: blankPage }];
-    }
-
-    if (!useCover) {
-        // No-cover mode starts immediately at Page 1 (left) and Page 2 (right).
-        const sheetCount = Math.max(1, Math.ceil((pageNodes.length + 1) / 2));
-        const sheets = [];
-
-        for (let i = 0; i < sheetCount; i += 1) {
-            sheets.push({
-                front: i === 0 ? blankPage : pageNodes[2 * i - 1] || blankPage,
-                back: pageNodes[2 * i] || blankPage
-            });
-        }
-
-        return sheets;
-    }
-
-    // Cover mode: first uploaded page becomes the front cover artwork.
-    const coverNode = pageNodes[0] || coverFront;
-    const insidePages = pageNodes.slice(1);
-    const sheetCount = Math.max(1, Math.ceil((insidePages.length + 1) / 2));
-    const sheets = [];
-    let insideCursor = 0;
-
-    for (let i = 0; i < sheetCount; i += 1) {
-        if (i === 0) {
-            sheets.push({
-                front: coverNode,
-                back: insidePages[insideCursor++] || blankPage
-            });
-            continue;
-        }
-
-        sheets.push({
-            front: insidePages[insideCursor++] || blankPage,
-            back: insidePages[insideCursor++] || blankPage
-        });
-    }
-
-    return sheets;
-}
-
 export function FlipbookStudio() {
+    const router = useRouter();
     const [orientation, setOrientation] = useState('portrait');
     const [useCover, setUseCover] = useState(true);
     const [items, setItems] = useState([]);
-    const [generatedSheets, setGeneratedSheets] = useState([]);
-    const [isReaderOpen, setIsReaderOpen] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
     const [isProcessingUploads, setIsProcessingUploads] = useState(false);
     const [showLoadingModal, setShowLoadingModal] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadError, setUploadError] = useState('');
+    const [isSavingBook, setIsSavingBook] = useState(false);
+    const [cloudSaveError, setCloudSaveError] = useState('');
+    const [cloudSaveMessage, setCloudSaveMessage] = useState('');
     const inputRef = useRef(null);
     const itemsRef = useRef(items);
 
@@ -265,10 +197,63 @@ export function FlipbookStudio() {
         event.target.value = '';
     }
 
-    function generateBook(openReader = true) {
-        const sheets = buildSheetsFromPages(pages, useCover);
-        setGeneratedSheets(sheets);
-        if (openReader) setIsReaderOpen(true);
+    async function createPageFileFromSource(src, index) {
+        const response = await fetch(src);
+        if (!response.ok) {
+            throw new Error(`Could not prepare page ${index + 1} for upload.`);
+        }
+
+        const blob = await response.blob();
+        const fallbackType = 'image/jpeg';
+        const mimeType = blob.type || fallbackType;
+        const extension = mimeType === 'image/png' ? 'png' : 'jpg';
+        return new File([blob], `page-${String(index + 1).padStart(3, '0')}.${extension}`, { type: mimeType });
+    }
+
+    async function savePagesToCloudStorage() {
+        const pageFiles = await Promise.all(pages.map((page, index) => createPageFileFromSource(page.src, index)));
+        const body = new FormData();
+        pageFiles.forEach((file) => body.append('pages', file));
+        body.append('orientation', orientation);
+        body.append('useCover', String(useCover));
+
+        const response = await fetch('/api/flipbooks', {
+            method: 'POST',
+            body
+        });
+
+        const result = await response.json().catch(() => null);
+        if (!response.ok) {
+            throw new Error(result?.error || 'Cloud upload failed.');
+        }
+
+        return result;
+    }
+
+    async function generateBook(openReader = true) {
+        if (!pages.length) return;
+        setCloudSaveError('');
+        setCloudSaveMessage('');
+        setIsSavingBook(true);
+
+        try {
+            const cloudResult = await savePagesToCloudStorage();
+            setCloudSaveMessage(
+                `Saved ${cloudResult.uploadedCount} page${cloudResult.uploadedCount === 1 ? '' : 's'} to cloud storage.`
+            );
+            if (openReader && cloudResult?.bookUrl) {
+                router.push(cloudResult.bookUrl);
+                return;
+            }
+
+            if (openReader && cloudResult?.bookId) {
+                router.push(`/${cloudResult.bookId}`);
+            }
+        } catch (error) {
+            setCloudSaveError(error?.message || 'Could not upload generated book to cloud storage.');
+        } finally {
+            setIsSavingBook(false);
+        }
     }
 
     useEffect(() => {
@@ -437,12 +422,14 @@ export function FlipbookStudio() {
                         <button
                             type="button"
                             className="book-button w-full px-7 py-3 text-base sm:w-auto"
-                            onClick={() => generateBook(true)}
-                            disabled={!items.length || isProcessingUploads}
+                            onClick={() => void generateBook(true)}
+                            disabled={!items.length || isProcessingUploads || isSavingBook}
                         >
-                            Generate Book
+                            {isSavingBook ? 'Saving to Cloud...' : 'Generate Book'}
                         </button>
                     </div>
+                    {cloudSaveError && <p className="mt-3 text-sm font-medium text-red-300">{cloudSaveError}</p>}
+                    {cloudSaveMessage && <p className="mt-3 text-sm font-medium text-cyan-200">{cloudSaveMessage}</p>}
                 </div>
 
                 {/* Preview section */}
@@ -475,20 +462,6 @@ export function FlipbookStudio() {
                     )}
                 </div>
             </div>
-
-            {/* Fullscreen reader opens as soon as a book has been generated */}
-            {isReaderOpen && generatedSheets.length > 0 && (
-                <Book
-                    sheets={generatedSheets}
-                    title="Generated Flipbook"
-                    fullScreen
-                    onRequestClose={() => setIsReaderOpen(false)}
-                    orientation={orientation}
-                    showEmbeddedControls={false}
-                    useCover={useCover}
-                    contentPageCount={pages.length}
-                />
-            )}
 
             {/* Upload/loading modal with fake progress that completes on real finish. */}
             {showLoadingModal && (

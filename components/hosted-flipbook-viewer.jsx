@@ -1,0 +1,169 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { Book } from './Book';
+
+function createContentPageNode(page) {
+    return (
+        <div className="flipbook-media-fill">
+            <img src={page.src} alt={page.label} className="h-full w-full object-cover" />
+        </div>
+    );
+}
+
+function createCoverNode(title, subtitle) {
+    return (
+        <div className="flex h-full flex-col justify-between">
+            <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-white/70">Flipbook Studio</p>
+                <h3 className="mt-3 text-3xl font-black">{title}</h3>
+                <p className="mt-2 text-white/80">{subtitle}</p>
+            </div>
+            <p className="text-sm text-white/65">Loaded from cloud storage.</p>
+        </div>
+    );
+}
+
+function buildSheetsFromPages(pages, useCover) {
+    const coverFront = createCoverNode('Your Flipbook', `${pages.length} generated page${pages.length === 1 ? '' : 's'}`);
+    const blankPage = <div className="h-full w-full rounded-sm border border-white/10 bg-black/10" />;
+    const pageNodes = pages.map((page) => createContentPageNode(page));
+
+    if (!pages.length) {
+        return [{ front: coverFront, back: blankPage }];
+    }
+
+    if (!useCover) {
+        const sheetCount = Math.max(1, Math.ceil((pageNodes.length + 1) / 2));
+        const sheets = [];
+
+        for (let i = 0; i < sheetCount; i += 1) {
+            sheets.push({
+                front: i === 0 ? blankPage : pageNodes[2 * i - 1] || blankPage,
+                back: pageNodes[2 * i] || blankPage
+            });
+        }
+
+        return sheets;
+    }
+
+    const coverNode = pageNodes[0] || coverFront;
+    const insidePages = pageNodes.slice(1);
+    const sheetCount = Math.max(1, Math.ceil((insidePages.length + 1) / 2));
+    const sheets = [];
+    let insideCursor = 0;
+
+    for (let i = 0; i < sheetCount; i += 1) {
+        if (i === 0) {
+            sheets.push({
+                front: coverNode,
+                back: insidePages[insideCursor++] || blankPage
+            });
+            continue;
+        }
+
+        sheets.push({
+            front: insidePages[insideCursor++] || blankPage,
+            back: insidePages[insideCursor++] || blankPage
+        });
+    }
+
+    return sheets;
+}
+
+export function HostedFlipbookViewer({ bookId }) {
+    const [status, setStatus] = useState('loading');
+    const [bookData, setBookData] = useState(null);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadBook() {
+            setStatus('loading');
+            setError('');
+
+            try {
+                const response = await fetch(`/api/flipbooks/${encodeURIComponent(bookId)}`);
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                    throw new Error(result?.error || 'Could not load this flipbook.');
+                }
+
+                if (!isMounted) return;
+                setBookData(result);
+                setStatus('ready');
+            } catch (fetchError) {
+                if (!isMounted) return;
+                setError(fetchError?.message || 'Could not load this flipbook.');
+                setStatus('error');
+            }
+        }
+
+        void loadBook();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [bookId]);
+
+    const pages = useMemo(() => {
+        if (!bookData?.pages) return [];
+
+        return bookData.pages.map((page, index) => ({
+            src: page.signedUrl,
+            label: `Page ${index + 1}`
+        }));
+    }, [bookData]);
+
+    const sheets = useMemo(() => {
+        return buildSheetsFromPages(pages, bookData?.useCover ?? true);
+    }, [pages, bookData?.useCover]);
+
+    if (status === 'loading') {
+        return (
+            <section className="mx-auto w-full max-w-4xl px-4 py-16 text-center">
+                <p className="text-sm uppercase tracking-[0.2em] text-white/50">Loading</p>
+                <h1 className="mt-3 text-4xl font-black">Opening your flipbook...</h1>
+                <p className="mt-2 text-white/70">Fetching pages from cloud storage.</p>
+            </section>
+        );
+    }
+
+    if (status === 'error') {
+        return (
+            <section className="mx-auto w-full max-w-4xl px-4 py-16 text-center">
+                <p className="text-sm uppercase tracking-[0.2em] text-red-200/80">Error</p>
+                <h1 className="mt-3 text-4xl font-black">Could not open this flipbook</h1>
+                <p className="mt-2 text-white/75">{error}</p>
+                <Link href="/" className="book-button mt-6 inline-flex px-6 py-3 text-base no-underline">
+                    Back to studio
+                </Link>
+            </section>
+        );
+    }
+
+    return (
+        <section className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/15 bg-black/20 px-4 py-3">
+                <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-white/50">Flipbook ID</p>
+                    <p className="text-sm font-semibold text-white/90">{bookId}</p>
+                </div>
+                <Link href="/" className="book-button inline-flex px-4 py-2 text-sm no-underline">
+                    Create another
+                </Link>
+            </div>
+
+            <Book
+                sheets={sheets}
+                title="Generated Flipbook"
+                orientation={bookData?.orientation || 'portrait'}
+                useCover={bookData?.useCover ?? true}
+                contentPageCount={pages.length}
+            />
+        </section>
+    );
+}
