@@ -105,7 +105,6 @@ export function Book({
     const hideUiTimeoutRef = useRef(null);
     const lastMousePositionRef = useRef({ x: null, y: null });
     const touchStartXRef = useRef(null);
-    const suppressNextSceneClickRef = useRef(false);
     const totalViews = maxPage - minPage + 1;
     const activeView = currentPage - minPage + 1;
     const activeThumbnailIndex = Math.max(0, currentPage - minPage);
@@ -226,14 +225,6 @@ export function Book({
 
     function onSceneClick(event) {
         if (!isFullscreen) return;
-        if (suppressNextSceneClickRef.current) {
-            suppressNextSceneClickRef.current = false;
-            return;
-        }
-        if (!showOverlayUi) {
-            setShowOverlayUi(true);
-            return;
-        }
         const rect = event.currentTarget.getBoundingClientRect();
         const isRightSide = event.clientX > rect.left + rect.width / 2;
         if (isRightSide) {
@@ -250,14 +241,6 @@ export function Book({
 
     function onSceneTouchEnd(event) {
         if (!isFullscreen || touchStartXRef.current === null) return;
-        if (!showOverlayUi) {
-            setShowOverlayUi(true);
-            // Mobile browsers often emit a synthetic click after touchend.
-            // Swallow that one so first tap only reveals controls.
-            suppressNextSceneClickRef.current = true;
-            touchStartXRef.current = null;
-            return;
-        }
         const endX = event.changedTouches[0]?.clientX ?? touchStartXRef.current;
         const delta = endX - touchStartXRef.current;
         touchStartXRef.current = null;
