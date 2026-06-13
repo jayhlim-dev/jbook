@@ -160,7 +160,7 @@ export function HostedFlipbookViewer({ bookId }) {
     const bookTitle = `Book ${bookId.slice(0, 8)}`;
 
     return (
-        <section className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+        <section className="mx-auto w-full max-w-[1480px] px-4 py-6 sm:px-6">
             <div className="rounded-[30px] border border-slate-200 bg-white p-4 text-slate-900 shadow-[0_20px_80px_rgba(15,23,42,0.08)] sm:p-6">
                 <header className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
                     <div className="flex items-center gap-8">

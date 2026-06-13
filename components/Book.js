@@ -104,6 +104,8 @@ export function Book({
     const touchStartXRef = useRef(null);
     const totalViews = maxPage - minPage + 1;
     const activeView = currentPage - minPage + 1;
+    const progressPercent = Math.round((activeView / Math.max(totalViews, 1)) * 100);
+    const remainingViews = Math.max(totalViews - activeView, 0);
     const isClosedCover = useCover && currentPage === 0;
     const isBackClosed = useCover && currentPage === totalSheets;
     const isTrailingSinglePage = !useCover && resolvedContentPages % 2 === 1 && currentPage === maxPage;
@@ -341,9 +343,19 @@ export function Book({
                     >
                         Previous
                     </button>
-                    <p>
-                        Page {activeView} of {totalViews}
-                    </p>
+
+                    <div className="book-overlay-progress">
+                        <div className="book-overlay-progress-top">
+                            <p>
+                                Page {activeView} of {totalViews}
+                            </p>
+                            <p>{remainingViews === 0 ? 'Last page' : `${remainingViews} page${remainingViews > 1 ? 's' : ''} left`}</p>
+                        </div>
+                        <div className="book-overlay-progress-track" aria-hidden="true">
+                            <div className="book-overlay-progress-fill" style={{ width: `${progressPercent}%` }} />
+                        </div>
+                    </div>
+
                     <button type="button" className="book-button" onClick={goNext} disabled={currentPage === maxPage}>
                         Next
                     </button>

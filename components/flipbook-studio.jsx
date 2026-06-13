@@ -22,7 +22,10 @@ async function convertPdfToPageImages(file) {
     // Lazy-load PDF.js so image-only flows stay fast.
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
     // Use local bundled worker (no CDN dependency) for reliable loading.
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+        import.meta.url
+    ).toString();
     const data = await file.arrayBuffer();
     let pdf;
 
@@ -78,6 +81,28 @@ export function FlipbookStudio() {
     const itemsRef = useRef(items);
 
     const totalCount = items.length;
+    const featureCards = [
+        {
+            title: 'Easy Upload',
+            description: 'Upload PDF or images in seconds.',
+            icon: '/images/icon/cloud.png'
+        },
+        {
+            title: 'Flipbook',
+            description: 'Page-flip effect with smooth animation.',
+            icon: '/images/icon/knowledge.png'
+        },
+        // {
+        //     title: 'Customize',
+        //     description: 'Add logo, colors, domain and branding.',
+        //     icon: '/images/icon/edit.png'
+        // },
+        {
+            title: 'Share ',
+            description: 'Share, embed or download your flipbook.',
+            icon: '/images/icon/share.png'
+        }
+    ];
     const totalGeneratedPages = useMemo(
         () => items.reduce((sum, item) => sum + (item.kind === 'image' ? 1 : item.pdfPages.length), 0),
         [items]
@@ -155,7 +180,9 @@ export function FlipbookStudio() {
                     }
 
                     if (allowedPages.length < pdfPages.length) {
-                        failedFiles.push(`${file.name} (trimmed to ${allowedPages.length} pages due to max ${MAX_PAGES})`);
+                        failedFiles.push(
+                            `${file.name} (trimmed to ${allowedPages.length} pages due to max ${MAX_PAGES})`
+                        );
                     }
 
                     prepared.push({
@@ -299,7 +326,7 @@ export function FlipbookStudio() {
     }, []);
 
     return (
-        <section className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+        <section className="mx-auto w-full max-w-[1480px] px-4 py-6 sm:px-6">
             <input
                 ref={inputRef}
                 type="file"
@@ -324,28 +351,34 @@ export function FlipbookStudio() {
                         </nav>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button type="button" className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">
+                        <button
+                            type="button"
+                            className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                        >
                             Log in
                         </button>
-                        <button type="button" className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500">
+                        <button
+                            type="button"
+                            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                        >
                             Sign up free
                         </button>
                     </div>
                 </header>
 
-                <div className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.25fr]">
-                    <section className="rounded-3xl bg-[#f6f5fb] p-6">
+                <div className="mt-6 grid gap-8 lg:grid-cols-[0.95fr_1.25fr] lg:items-start">
+                    <section className="self-start rounded-3xl bg-[#f6f5fb] p-6 lg:p-8">
                         <span className="inline-flex rounded-full bg-indigo-100 px-4 py-1 text-sm font-semibold text-indigo-700">
                             Create. Upload. Flip.
                         </span>
-                        <h1 className="mt-4 text-4xl font-black leading-tight text-slate-900 sm:text-5xl">
+                        <h1 className="mt-5 text-4xl font-black leading-[1.08] text-slate-900 sm:text-5xl">
                             Turn your PDFs and images into beautiful <span className="text-indigo-600">flipbooks.</span>
                         </h1>
-                        <p className="mt-4 text-lg text-slate-600">
-                            Upload your PDF or PNG files and we will turn them into a realistic flipbook in seconds.
+                        <p className="mt-5 text-lg leading-relaxed text-slate-600">
+                            Upload your PDF or PNG files and we will turn them into a flipbook in seconds.
                         </p>
 
-                        <div className="mt-6 flex flex-wrap gap-3">
+                        <div className="mt-7 flex flex-wrap gap-3">
                             <button
                                 type="button"
                                 className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500"
@@ -364,9 +397,48 @@ export function FlipbookStudio() {
                             </button>
                         </div>
 
-                        <p className="mt-3 text-sm text-slate-500">PDF, PNG, JPG or ZIP. Max {formatBytes(MAX_TOTAL_UPLOAD_BYTES)}</p>
+                        <p className="mt-4 text-sm text-slate-500">
+                            PDF, PNG, JPG or ZIP. Max {formatBytes(MAX_TOTAL_UPLOAD_BYTES)}
+                        </p>
 
-                        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="mt-8 grid gap-4">
+                            <article className="rounded-2xl border border-slate-200 bg-white p-5">
+                                <h3 className="text-lg font-bold text-slate-900">Everything you need</h3>
+                                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                    {featureCards.map((feature) => (
+                                        <article
+                                            key={feature.title}
+                                            className="rounded-xl border border-slate-200 bg-[#f8f7fc] p-5"
+                                        >
+                                            <div className="mb-3 inline-flex rounded-xl bg-white p-3">
+                                                <img
+                                                    src={feature.icon}
+                                                    alt={`${feature.title} icon`}
+                                                    className="h-6 w-6 object-contain"
+                                                />
+                                            </div>
+                                            <h4 className="text-base font-bold leading-tight text-slate-900">{feature.title}</h4>
+                                            <p className="mt-2 text-sm leading-relaxed text-slate-600">{feature.description}</p>
+                                        </article>
+                                    ))}
+                                </div>
+                            </article>
+                            {/* <article className="rounded-2xl border border-slate-200 bg-[#f8f7fc] p-4">
+                                <h3 className="text-lg font-bold text-slate-900">Recent books</h3>
+                                <p className="mt-3 text-sm text-slate-600">
+                                    {items.length
+                                        ? `${items.length} source file${items.length > 1 ? 's' : ''} loaded`
+                                        : 'No recent book yet'}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Generate a new book to get your unique share URL.
+                                </p>
+                            </article> */}
+                        </div>
+                    </section>
+
+                    <section className="rounded-3xl bg-[#f8f7fc] p-6">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
                             <div className="mb-4 flex flex-wrap items-center gap-3">
                                 {['portrait', 'landscape'].map((mode) => (
                                     <button
@@ -416,13 +488,14 @@ export function FlipbookStudio() {
                                 </p>
                             </div>
                         </div>
-                    </section>
-
-                    <section className="rounded-3xl bg-[#f8f7fc] p-5">
                         <div className="rounded-2xl border border-slate-200 bg-white p-4">
                             <div className="aspect-16/10 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
                                 {items[0]?.previewUrl ? (
-                                    <img src={items[0].previewUrl} alt="Flipbook preview" className="h-full w-full object-cover" />
+                                    <img
+                                        src={items[0].previewUrl}
+                                        alt="Flipbook preview"
+                                        className="h-full w-full object-cover"
+                                    />
                                 ) : (
                                     <div className="grid h-full place-items-center text-center text-slate-500">
                                         <div>
@@ -448,24 +521,6 @@ export function FlipbookStudio() {
                                     {isSavingBook ? 'Saving to Cloud...' : 'Generate Book'}
                                 </button>
                             </div>
-                        </div>
-
-                        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                            <article className="rounded-2xl border border-slate-200 bg-white p-4">
-                                <h3 className="text-lg font-bold text-slate-900">Everything you need</h3>
-                                <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                                    <li>Easy upload and conversion</li>
-                                    <li>Realistic page flip effect</li>
-                                    <li>Brand-ready output</li>
-                                </ul>
-                            </article>
-                            <article className="rounded-2xl border border-slate-200 bg-white p-4">
-                                <h3 className="text-lg font-bold text-slate-900">Recent books</h3>
-                                <p className="mt-3 text-sm text-slate-600">
-                                    {items.length ? `${items.length} source file${items.length > 1 ? 's' : ''} loaded` : 'No recent book yet'}
-                                </p>
-                                <p className="mt-1 text-xs text-slate-500">Generate a new book to get your unique share URL.</p>
-                            </article>
                         </div>
                     </section>
                 </div>
@@ -493,7 +548,9 @@ export function FlipbookStudio() {
                                 style={{ width: `${uploadProgress}%` }}
                             />
                         </div>
-                        <p className="mt-2 text-right text-sm font-semibold text-slate-600">{Math.round(uploadProgress)}%</p>
+                        <p className="mt-2 text-right text-sm font-semibold text-slate-600">
+                            {Math.round(uploadProgress)}%
+                        </p>
                     </div>
                 </div>
             )}
