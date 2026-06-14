@@ -366,7 +366,7 @@ export function FlipbookStudio() {
                     </div>
                 </header>
 
-                <div className="mt-6 grid gap-8 lg:grid-cols-[0.95fr_1.25fr] lg:items-start">
+                <div className="mt-6 grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
                     <section className="self-start rounded-3xl bg-[#f6f5fb] p-6 lg:p-8">
                         <span className="inline-flex rounded-full bg-indigo-100 px-4 py-1 text-sm font-semibold text-indigo-700">
                             Create. Upload. Flip.
