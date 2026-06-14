@@ -110,10 +110,14 @@ export function Book({
     const [mobileTurnTick, setMobileTurnTick] = useState(0);
     const [mobilePreviousPageSrc, setMobilePreviousPageSrc] = useState('');
     const [mobileIsTurning, setMobileIsTurning] = useState(false);
+    const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
     const hideUiTimeoutRef = useRef(null);
     const mobileTurnTimerRef = useRef(null);
     const lastMousePositionRef = useRef({ x: null, y: null });
     const touchStartXRef = useRef(null);
+    const goNextRef = useRef(() => { });
+    const goPreviousRef = useRef(() => { });
+    const closeFullscreenRef = useRef(() => { });
     const totalViews = maxPage - minPage + 1;
     const activeView = currentPage - minPage + 1;
     const activeThumbnailIndex = Math.max(0, currentPage - minPage);
@@ -121,15 +125,46 @@ export function Book({
     const isBackClosed = useCover && currentPage === totalSheets;
     const isTrailingSinglePage = !useCover && resolvedContentPages % 2 === 1 && currentPage === maxPage;
     const showMobileSinglePage = isFullscreen && isMobileViewport && fullscreenThumbnails.length > 0;
-    const navTotalViews = showMobileSinglePage ? fullscreenThumbnails.length : totalViews;
-    const navActiveView = showMobileSinglePage ? mobilePageIndex + 1 : activeView;
+    const hasPageLevelPreview = fullscreenThumbnails.length > 0 && fullscreenThumbnails.length !== totalViews;
+    const desktopPageProgress = (() => {
+        if (!hasPageLevelPreview) {
+            return { active: activeView, total: totalViews };
+        }
+
+        if (useCover) {
+            const total = Math.max(1, fullscreenThumbnails.length - 1);
+            const active = currentPage === 0 ? 1 : Math.min(fullscreenThumbnails.length, currentPage * 2);
+            return { active: Math.min(active, total), total };
+        }
+
+        const relative = Math.max(0, currentPage - minPage);
+        const active = Math.min(fullscreenThumbnails.length, relative * 2 + 1);
+        return { active, total: fullscreenThumbnails.length };
+    })();
+    const navTotalViews = showMobileSinglePage ? fullscreenThumbnails.length : desktopPageProgress.total;
+    const navActiveView = showMobileSinglePage ? mobilePageIndex + 1 : desktopPageProgress.active;
     const navProgressPercent = Math.round((navActiveView / Math.max(navTotalViews, 1)) * 100);
     const navRemainingViews = Math.max(navTotalViews - navActiveView, 0);
+    const desktopLastContentPage = hasPageLevelPreview
+        ? useCover
+            ? Math.max(minPage, Math.ceil((fullscreenThumbnails.length - 1) / 2))
+            : Math.max(minPage, Math.floor((fullscreenThumbnails.length - 1) / 2) + minPage)
+        : maxPage;
     const isAtNavStart = showMobileSinglePage ? mobilePageIndex <= 0 : currentPage === minPage;
     const isAtNavEnd = showMobileSinglePage
         ? mobilePageIndex >= Math.max(fullscreenThumbnails.length - 1, 0)
-        : currentPage === maxPage;
+        : currentPage >= desktopLastContentPage;
     const currentMobilePage = fullscreenThumbnails[mobilePageIndex];
+    const activePreviewIndex = showMobileSinglePage
+        ? mobilePageIndex
+        : (() => {
+            if (!hasPageLevelPreview) return activeThumbnailIndex;
+            if (useCover) {
+                return currentPage === 0 ? 0 : Math.min(fullscreenThumbnails.length - 1, currentPage * 2 - 1);
+            }
+            const relative = Math.max(0, currentPage - minPage);
+            return Math.min(fullscreenThumbnails.length - 1, relative * 2);
+        })();
 
     // Keep local fullscreen state in sync if parent passes a different default.
     useEffect(() => {
@@ -185,6 +220,12 @@ export function Book({
         }, MOBILE_FLIP_DURATION_MS);
     }
 
+    useEffect(() => {
+        goNextRef.current = goNext;
+        goPreviousRef.current = goPrevious;
+        closeFullscreenRef.current = closeFullscreen;
+    });
+
     // Lock page scroll, support keyboard controls, and auto-hide overlay UI.
     useEffect(() => {
         if (!isFullscreen) {
@@ -232,21 +273,21 @@ export function Book({
 
         const onKeyDown = (event) => {
             if (event.key === 'Escape') {
-                closeFullscreen();
+                closeFullscreenRef.current();
                 return;
             }
 
             // Left Arrow = previous sheet
             if (event.key === 'ArrowLeft') {
                 event.preventDefault();
-                goPrevious();
+                goPreviousRef.current();
                 return;
             }
 
             // Right Arrow and Space = next sheet
             if (event.key === 'ArrowRight' || event.key === ' ' || event.code === 'Space') {
                 event.preventDefault();
-                goNext();
+                goNextRef.current();
             }
         };
 
@@ -268,7 +309,7 @@ export function Book({
                 hideUiTimeoutRef.current = null;
             }
         };
-    }, [goNext, goPrevious, isFullscreen, totalSheets]);
+    }, [isFullscreen]);
 
     function goNext() {
         if (showMobileSinglePage) {
@@ -276,7 +317,7 @@ export function Book({
             beginMobileTurn('next', nextIndex);
             return;
         }
-        setCurrentPage((prev) => Math.min(prev + 1, maxPage));
+        setCurrentPage((prev) => Math.min(prev + 1, desktopLastContentPage));
     }
 
     function goPrevious() {
@@ -341,20 +382,20 @@ export function Book({
             )}
 
             {isFullscreen && (
-                <header className={`book-overlay-top ${showOverlayUi ? '' : 'controls-hidden'}`}>
-                    <div className="book-overlay-top-left">
+                <header className={`book-overlay-top ${showOverlayUi ? '' : 'controls-hidden'} `}>
+                    <div className="book-overlay-top-left w-full flex justify-between">
+                        <h2>{title}</h2>
                         {overlayBackHref && (
                             <a href={overlayBackHref} className="book-button no-underline">
                                 {overlayBackLabel}
                             </a>
                         )}
-                        <h2>{title}</h2>
                     </div>
-                    {!lockFullscreen && (
+                    {/* {!lockFullscreen && (
                         <button type="button" className="book-button" onClick={closeFullscreen}>
                             Exit Full Screen
                         </button>
-                    )}
+                    )} */}
                 </header>
             )}
 
@@ -386,7 +427,8 @@ export function Book({
                 ) : (
                     <div
                         className={`book ${isFullscreen ? 'book-overlay-size' : ''} book-orientation-${orientation} ${isClosedCover ? 'book-closed' : ''
-                            } ${isBackClosed ? 'book-back-closed' : ''} ${isTrailingSinglePage ? 'book-single-tail' : ''}`}
+                            } ${isBackClosed ? 'book-back-closed' : ''} ${isTrailingSinglePage ? 'book-single-tail' : ''} ${isClosedCover ? 'book-cover-centered' : ''
+                            }`}
                     >
                         {/* <div className="book-spine" />
                         <div className="book-base-page book-base-left" />
@@ -436,15 +478,15 @@ export function Book({
             {isFullscreen && (
                 <footer className={`book-overlay-bottom ${showOverlayUi ? '' : 'controls-hidden'}`}>
                     <div className="book-overlay-nav-row">
-                        <button
-                            type="button"
-                            className="book-button"
-                            onClick={goPrevious}
-                            disabled={isAtNavStart}
-                        >
-                            Previous
-                        </button>
-
+                        {fullscreenThumbnails.length > 0 && (
+                            <button
+                                type="button"
+                                className="book-button book-preview-open-button"
+                                onClick={() => setIsPreviewModalOpen(true)}
+                            >
+                                <img src="/images/icon/apps-white.png" alt="" aria-hidden="true" className="book-preview-open-icon" />
+                            </button>
+                        )}
                         <div className="book-overlay-progress">
                             <div className="book-overlay-progress-top">
                                 <p>
@@ -461,34 +503,60 @@ export function Book({
                             </div>
                         </div>
 
-                        <button type="button" className="book-button" onClick={goNext} disabled={isAtNavEnd}>
-                            Next
-                        </button>
+                        <div className="book-overlay-nav-actions">
+                            <button
+                                type="button"
+                                className="book-button"
+                                onClick={goPrevious}
+                                disabled={isAtNavStart}
+                            >
+                                Previous
+                            </button>
+                            <button type="button" className="book-button" onClick={goNext} disabled={isAtNavEnd}>
+                                Next
+                            </button>
+                        </div>
                     </div>
+                </footer>
+            )}
 
-                    {fullscreenThumbnails.length > 0 && (
-                        <div className="book-overlay-strip">
+            {isPreviewModalOpen && (
+                <div className="book-preview-modal-backdrop" onClick={() => setIsPreviewModalOpen(false)}>
+                    <div className="book-preview-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="book-preview-modal-header">
+                            <h3>Pages Preview</h3>
+                            <button type="button" className="book-button" onClick={() => setIsPreviewModalOpen(false)}>
+                                Close
+                            </button>
+                        </div>
+                        <div className="book-preview-modal-grid">
                             {fullscreenThumbnails.map((thumbnail, index) => (
                                 <button
-                                    key={`${thumbnail.src}-${index}`}
+                                    key={`preview-${thumbnail.src}-${index}`}
                                     type="button"
-                                    className={`book-overlay-strip-button ${(showMobileSinglePage ? mobilePageIndex : activeThumbnailIndex) === index ? 'active' : ''}`}
+                                    className={`book-preview-modal-item ${activePreviewIndex === index ? 'active' : ''}`}
                                     onClick={() => {
                                         if (showMobileSinglePage) {
                                             beginMobileTurn(index < mobilePageIndex ? 'prev' : 'next', index);
-                                            return;
+                                        } else if (hasPageLevelPreview) {
+                                            if (useCover) {
+                                                setCurrentPage(index === 0 ? 0 : Math.min(maxPage, Math.ceil(index / 2)));
+                                            } else {
+                                                setCurrentPage(Math.min(maxPage, Math.floor(index / 2) + minPage));
+                                            }
+                                        } else {
+                                            setCurrentPage(Math.min(maxPage, minPage + index));
                                         }
-                                        setCurrentPage(Math.min(maxPage, minPage + index));
+                                        setIsPreviewModalOpen(false);
                                     }}
-                                    title={thumbnail.label || `Page ${index + 1}`}
                                 >
                                     <img src={thumbnail.src} alt={thumbnail.label || `Page ${index + 1}`} />
                                     <span>{index + 1}</span>
                                 </button>
                             ))}
                         </div>
-                    )}
-                </footer>
+                    </div>
+                </div>
             )}
         </section>
     );
