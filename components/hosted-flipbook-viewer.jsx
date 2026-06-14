@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Book } from './Book';
 
-function createContentPageNode(page) {
+function createContentPageNode(page, variant = 'page') {
     return (
-        <div className="flipbook-media-fill">
+        <div className={`flipbook-media-fill ${variant === 'cover' ? 'flipbook-media-fill-cover' : ''}`}>
             <img src={page.src} alt={page.label} className="h-full w-full object-cover" />
         </div>
     );
@@ -27,7 +27,7 @@ function createCoverNode(title, subtitle) {
 function buildSheetsFromPages(pages, useCover) {
     const coverFront = createCoverNode('Your Flipbook', `${pages.length} generated page${pages.length === 1 ? '' : 's'}`);
     const blankPage = <div className="h-full w-full rounded-sm border border-white/10 bg-black/10" />;
-    const pageNodes = pages.map((page) => createContentPageNode(page));
+    const pageNodes = pages.map((page, index) => createContentPageNode(page, useCover && index === 0 ? 'cover' : 'page'));
 
     if (!pages.length) {
         return [{ front: coverFront, back: blankPage }];
@@ -157,7 +157,12 @@ export function HostedFlipbookViewer({ bookId }) {
         <section>
             <Book
                 sheets={sheets}
-                title="Generated Flipbook"
+                title={
+                    <span className="book-overlay-brand">
+                        <img src="/images/logo/main-logo-black.png" alt="Flipy" className="book-overlay-brand-logo" />
+                        <span className="book-overlay-brand-tag">Preview</span>
+                    </span>
+                }
                 fullScreen
                 lockFullscreen
                 showEmbeddedControls={false}

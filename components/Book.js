@@ -230,6 +230,7 @@ export function Book({
     useEffect(() => {
         if (!isFullscreen) {
             setShowOverlayUi(true);
+            document.body.style.cursor = '';
             lastMousePositionRef.current = { x: null, y: null };
             if (hideUiTimeoutRef.current) {
                 clearTimeout(hideUiTimeoutRef.current);
@@ -240,6 +241,7 @@ export function Book({
 
         const originalOverflow = document.body.style.overflow;
         const HIDE_DELAY_MS = 2200;
+        const MOVE_THRESHOLD_PX = 8;
 
         const restartHideTimer = () => {
             if (hideUiTimeoutRef.current) {
@@ -248,15 +250,17 @@ export function Book({
 
             hideUiTimeoutRef.current = setTimeout(() => {
                 setShowOverlayUi(false);
+                document.body.style.cursor = 'none';
             }, HIDE_DELAY_MS);
         };
 
         const revealUi = () => {
             setShowOverlayUi(true);
+            document.body.style.cursor = '';
             restartHideTimer();
         };
 
-        const onMouseMove = (event) => {
+        const onPointerMove = (event) => {
             const last = lastMousePositionRef.current;
             const deltaX = last.x === null ? Infinity : Math.abs(event.clientX - last.x);
             const deltaY = last.y === null ? Infinity : Math.abs(event.clientY - last.y);
@@ -264,7 +268,7 @@ export function Book({
             lastMousePositionRef.current = { x: event.clientX, y: event.clientY };
 
             // Only reveal when cursor actually moves, not from synthetic/no-op mousemove events.
-            if (deltaX < 2 && deltaY < 2) {
+            if (deltaX < MOVE_THRESHOLD_PX && deltaY < MOVE_THRESHOLD_PX) {
                 return;
             }
 
@@ -296,12 +300,17 @@ export function Book({
 
         // Netflix-style behavior requested: overlays return only on cursor movement.
         window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('touchstart', revealUi, { passive: true });
 
         return () => {
             document.body.style.overflow = originalOverflow;
+            document.body.style.cursor = '';
             window.removeEventListener('keydown', onKeyDown);
-            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mousemove', onPointerMove);
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('touchstart', revealUi);
             lastMousePositionRef.current = { x: null, y: null };
 
             if (hideUiTimeoutRef.current) {
