@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Page } from './Page';
 
 const MOBILE_FLIP_DURATION_MS = 260;
+// to set to false to hide the overlay
+const ALWAYS_SHOW_OVERLAY = true;
 
 /**
  * @typedef {Object} Sheet
@@ -244,6 +246,8 @@ export function Book({
         const MOVE_THRESHOLD_PX = 8;
 
         const restartHideTimer = () => {
+            if (ALWAYS_SHOW_OVERLAY) return;
+
             if (hideUiTimeoutRef.current) {
                 clearTimeout(hideUiTimeoutRef.current);
             }
@@ -296,13 +300,20 @@ export function Book({
         };
 
         document.body.style.overflow = 'hidden';
-        revealUi();
+        setShowOverlayUi(true);
+        document.body.style.cursor = '';
+
+        if (!ALWAYS_SHOW_OVERLAY) {
+            revealUi();
+        }
 
         // Netflix-style behavior requested: overlays return only on cursor movement.
         window.addEventListener('keydown', onKeyDown);
-        window.addEventListener('mousemove', onPointerMove);
-        window.addEventListener('pointermove', onPointerMove);
-        window.addEventListener('touchstart', revealUi, { passive: true });
+        if (!ALWAYS_SHOW_OVERLAY) {
+            window.addEventListener('mousemove', onPointerMove);
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('touchstart', revealUi, { passive: true });
+        }
 
         return () => {
             document.body.style.overflow = originalOverflow;
@@ -318,7 +329,7 @@ export function Book({
                 hideUiTimeoutRef.current = null;
             }
         };
-    }, [isFullscreen]);
+    }, [isFullscreen, ALWAYS_SHOW_OVERLAY]);
 
     function goNext() {
         if (showMobileSinglePage) {
@@ -377,7 +388,7 @@ export function Book({
 
     return (
         <section
-            className={`book-demo ${isFullscreen ? 'book-demo-overlay' : ''} ${isFullscreen && !showOverlayUi ? 'book-cursor-hidden' : ''
+            className={`book-demo ${isFullscreen ? 'book-demo-overlay' : ''} ${isFullscreen && !ALWAYS_SHOW_OVERLAY && !showOverlayUi ? 'book-cursor-hidden' : ''
                 }`}
             aria-label={title}
         >
@@ -391,9 +402,9 @@ export function Book({
             )}
 
             {isFullscreen && (
-                <header className={`book-overlay-top ${showOverlayUi ? '' : 'controls-hidden'} `}>
-                    <div className="book-overlay-top-left w-full flex justify-between">
-                        <h2>{title}</h2>
+                <header className={`book-overlay-top ${showOverlayUi || ALWAYS_SHOW_OVERLAY ? '' : 'controls-hidden'} `}>
+                    <div className="book-overlay-top-left w-full flex justify-between px-6!">
+                        <h2 className='items-center h-full flex'>{title}</h2>
                         {overlayBackHref && (
                             <a href={overlayBackHref} className="book-button no-underline">
                                 {overlayBackLabel}
@@ -485,7 +496,7 @@ export function Book({
 
             {/* Netflix-like bottom bar while in fullscreen mode */}
             {isFullscreen && (
-                <footer className={`book-overlay-bottom ${showOverlayUi ? '' : 'controls-hidden'}`}>
+                <footer className={`book-overlay-bottom ${showOverlayUi || ALWAYS_SHOW_OVERLAY ? '' : 'controls-hidden'}`}>
                     <div className="book-overlay-nav-row">
                         {fullscreenThumbnails.length > 0 && (
                             <button
