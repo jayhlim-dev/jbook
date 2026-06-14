@@ -3,6 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Page } from './Page';
 
+const MOBILE_FLIP_DURATION_MS = 260;
+
 /**
  * @typedef {Object} Sheet
  * @property {React.ReactNode} front
@@ -102,17 +104,32 @@ export function Book({
     const [currentPage, setCurrentPage] = useState(initialPage);
     const [isFullscreen, setIsFullscreen] = useState(fullScreen);
     const [showOverlayUi, setShowOverlayUi] = useState(true);
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
+    const [mobilePageIndex, setMobilePageIndex] = useState(0);
+    const [mobileTurnDirection, setMobileTurnDirection] = useState('next');
+    const [mobileTurnTick, setMobileTurnTick] = useState(0);
+    const [mobilePreviousPageSrc, setMobilePreviousPageSrc] = useState('');
+    const [mobileIsTurning, setMobileIsTurning] = useState(false);
     const hideUiTimeoutRef = useRef(null);
+    const mobileTurnTimerRef = useRef(null);
     const lastMousePositionRef = useRef({ x: null, y: null });
     const touchStartXRef = useRef(null);
     const totalViews = maxPage - minPage + 1;
     const activeView = currentPage - minPage + 1;
     const activeThumbnailIndex = Math.max(0, currentPage - minPage);
-    const progressPercent = Math.round((activeView / Math.max(totalViews, 1)) * 100);
-    const remainingViews = Math.max(totalViews - activeView, 0);
     const isClosedCover = useCover && currentPage === 0;
     const isBackClosed = useCover && currentPage === totalSheets;
     const isTrailingSinglePage = !useCover && resolvedContentPages % 2 === 1 && currentPage === maxPage;
+    const showMobileSinglePage = isFullscreen && isMobileViewport && fullscreenThumbnails.length > 0;
+    const navTotalViews = showMobileSinglePage ? fullscreenThumbnails.length : totalViews;
+    const navActiveView = showMobileSinglePage ? mobilePageIndex + 1 : activeView;
+    const navProgressPercent = Math.round((navActiveView / Math.max(navTotalViews, 1)) * 100);
+    const navRemainingViews = Math.max(navTotalViews - navActiveView, 0);
+    const isAtNavStart = showMobileSinglePage ? mobilePageIndex <= 0 : currentPage === minPage;
+    const isAtNavEnd = showMobileSinglePage
+        ? mobilePageIndex >= Math.max(fullscreenThumbnails.length - 1, 0)
+        : currentPage === maxPage;
+    const currentMobilePage = fullscreenThumbnails[mobilePageIndex];
 
     // Keep local fullscreen state in sync if parent passes a different default.
     useEffect(() => {
@@ -123,6 +140,50 @@ export function Book({
     useEffect(() => {
         setCurrentPage(initialPage);
     }, [initialPage, totalSheets]);
+
+    useEffect(() => {
+        const media = window.matchMedia('(max-width: 640px)');
+        const sync = () => setIsMobileViewport(media.matches);
+        sync();
+        media.addEventListener('change', sync);
+        return () => media.removeEventListener('change', sync);
+    }, []);
+
+    useEffect(() => {
+        setMobilePageIndex(0);
+    }, [fullscreenThumbnails.length]);
+
+    useEffect(() => {
+        return () => {
+            if (mobileTurnTimerRef.current) {
+                clearTimeout(mobileTurnTimerRef.current);
+                mobileTurnTimerRef.current = null;
+            }
+        };
+    }, []);
+
+    function beginMobileTurn(direction, nextIndex) {
+        const currentSrc = fullscreenThumbnails[mobilePageIndex]?.src;
+        if (!currentSrc || nextIndex === mobilePageIndex) {
+            setMobilePageIndex(nextIndex);
+            return;
+        }
+
+        if (mobileTurnTimerRef.current) {
+            clearTimeout(mobileTurnTimerRef.current);
+        }
+
+        setMobileTurnDirection(direction);
+        setMobileTurnTick((tick) => tick + 1);
+        setMobilePreviousPageSrc(currentSrc);
+        setMobilePageIndex(nextIndex);
+        setMobileIsTurning(true);
+        mobileTurnTimerRef.current = setTimeout(() => {
+            setMobileIsTurning(false);
+            setMobilePreviousPageSrc('');
+            mobileTurnTimerRef.current = null;
+        }, MOBILE_FLIP_DURATION_MS);
+    }
 
     // Lock page scroll, support keyboard controls, and auto-hide overlay UI.
     useEffect(() => {
@@ -178,14 +239,14 @@ export function Book({
             // Left Arrow = previous sheet
             if (event.key === 'ArrowLeft') {
                 event.preventDefault();
-                setCurrentPage((prev) => Math.max(prev - 1, minPage));
+                goPrevious();
                 return;
             }
 
             // Right Arrow and Space = next sheet
             if (event.key === 'ArrowRight' || event.key === ' ' || event.code === 'Space') {
                 event.preventDefault();
-                setCurrentPage((prev) => Math.min(prev + 1, maxPage));
+                goNext();
             }
         };
 
@@ -207,13 +268,23 @@ export function Book({
                 hideUiTimeoutRef.current = null;
             }
         };
-    }, [isFullscreen, maxPage, minPage, totalSheets]);
+    }, [goNext, goPrevious, isFullscreen, totalSheets]);
 
     function goNext() {
+        if (showMobileSinglePage) {
+            const nextIndex = Math.min(mobilePageIndex + 1, Math.max(fullscreenThumbnails.length - 1, 0));
+            beginMobileTurn('next', nextIndex);
+            return;
+        }
         setCurrentPage((prev) => Math.min(prev + 1, maxPage));
     }
 
     function goPrevious() {
+        if (showMobileSinglePage) {
+            const nextIndex = Math.max(mobilePageIndex - 1, 0);
+            beginMobileTurn('prev', nextIndex);
+            return;
+        }
         setCurrentPage((prev) => Math.max(prev - 1, minPage));
     }
 
@@ -256,9 +327,8 @@ export function Book({
 
     return (
         <section
-            className={`book-demo ${isFullscreen ? 'book-demo-overlay' : ''} ${
-                isFullscreen && !showOverlayUi ? 'book-cursor-hidden' : ''
-            }`}
+            className={`book-demo ${isFullscreen ? 'book-demo-overlay' : ''} ${isFullscreen && !showOverlayUi ? 'book-cursor-hidden' : ''
+                }`}
             aria-label={title}
         >
             {!isFullscreen && (
@@ -295,32 +365,51 @@ export function Book({
                 onTouchStart={onSceneTouchStart}
                 onTouchEnd={onSceneTouchEnd}
             >
-                <div
-                    className={`book ${isFullscreen ? 'book-overlay-size' : ''} book-orientation-${orientation} ${
-                        isClosedCover ? 'book-closed' : ''
-                    } ${isBackClosed ? 'book-back-closed' : ''} ${isTrailingSinglePage ? 'book-single-tail' : ''}`}
-                >
-                    {/* <div className="book-spine" />
-                    <div className="book-base-page book-base-left" />
-                    <div className="book-base-page book-base-right" /> */}
-
-                    {/* Sheets live on the right side and flip from center spine to the left side. */}
-                    {sheets.map((sheet, index) => {
-                        const isFlipped = index < currentPage;
-                        const zIndex = isFlipped ? index + 1 : totalSheets - index + totalSheets;
-
-                        return (
-                            <Page
-                                key={`sheet-${index}`}
-                                index={index}
-                                flipped={isFlipped}
-                                zIndex={zIndex}
-                                frontContent={sheet.front}
-                                backContent={sheet.back}
+                {showMobileSinglePage ? (
+                    <div className="book-mobile-page">
+                        <img
+                            src={currentMobilePage?.src}
+                            alt={currentMobilePage?.label || `Page ${mobilePageIndex + 1}`}
+                            className={`book-mobile-page-image book-mobile-page-image-incoming ${mobileIsTurning ? (mobileTurnDirection === 'prev' ? 'turn-prev' : 'turn-next') : ''
+                                }`}
+                        />
+                        {mobileIsTurning && mobilePreviousPageSrc && (
+                            <img
+                                key={`${mobileTurnTick}-${mobileTurnDirection}`}
+                                src={mobilePreviousPageSrc}
+                                alt="Previous page"
+                                className={`book-mobile-page-image book-mobile-page-image-outgoing ${mobileTurnDirection === 'prev' ? 'turn-prev' : 'turn-next'
+                                    }`}
                             />
-                        );
-                    })}
-                </div>
+                        )}
+                    </div>
+                ) : (
+                    <div
+                        className={`book ${isFullscreen ? 'book-overlay-size' : ''} book-orientation-${orientation} ${isClosedCover ? 'book-closed' : ''
+                            } ${isBackClosed ? 'book-back-closed' : ''} ${isTrailingSinglePage ? 'book-single-tail' : ''}`}
+                    >
+                        {/* <div className="book-spine" />
+                        <div className="book-base-page book-base-left" />
+                        <div className="book-base-page book-base-right" /> */}
+
+                        {/* Sheets live on the right side and flip from center spine to the left side. */}
+                        {sheets.map((sheet, index) => {
+                            const isFlipped = index < currentPage;
+                            const zIndex = isFlipped ? index + 1 : totalSheets - index + totalSheets;
+
+                            return (
+                                <Page
+                                    key={`sheet-${index}`}
+                                    index={index}
+                                    flipped={isFlipped}
+                                    zIndex={zIndex}
+                                    frontContent={sheet.front}
+                                    backContent={sheet.back}
+                                />
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Standard controls for non-fullscreen mode */}
@@ -351,7 +440,7 @@ export function Book({
                             type="button"
                             className="book-button"
                             onClick={goPrevious}
-                            disabled={currentPage === minPage}
+                            disabled={isAtNavStart}
                         >
                             Previous
                         </button>
@@ -359,16 +448,20 @@ export function Book({
                         <div className="book-overlay-progress">
                             <div className="book-overlay-progress-top">
                                 <p>
-                                    Page {activeView} of {totalViews}
+                                    Page {navActiveView} of {navTotalViews}
                                 </p>
-                                <p>{remainingViews === 0 ? 'Last page' : `${remainingViews} page${remainingViews > 1 ? 's' : ''} left`}</p>
+                                <p>
+                                    {navRemainingViews === 0
+                                        ? 'Last page'
+                                        : `${navRemainingViews} page${navRemainingViews > 1 ? 's' : ''} left`}
+                                </p>
                             </div>
                             <div className="book-overlay-progress-track" aria-hidden="true">
-                                <div className="book-overlay-progress-fill" style={{ width: `${progressPercent}%` }} />
+                                <div className="book-overlay-progress-fill" style={{ width: `${navProgressPercent}%` }} />
                             </div>
                         </div>
 
-                        <button type="button" className="book-button" onClick={goNext} disabled={currentPage === maxPage}>
+                        <button type="button" className="book-button" onClick={goNext} disabled={isAtNavEnd}>
                             Next
                         </button>
                     </div>
@@ -379,8 +472,14 @@ export function Book({
                                 <button
                                     key={`${thumbnail.src}-${index}`}
                                     type="button"
-                                    className={`book-overlay-strip-button ${activeThumbnailIndex === index ? 'active' : ''}`}
-                                    onClick={() => setCurrentPage(Math.min(maxPage, minPage + index))}
+                                    className={`book-overlay-strip-button ${(showMobileSinglePage ? mobilePageIndex : activeThumbnailIndex) === index ? 'active' : ''}`}
+                                    onClick={() => {
+                                        if (showMobileSinglePage) {
+                                            beginMobileTurn(index < mobilePageIndex ? 'prev' : 'next', index);
+                                            return;
+                                        }
+                                        setCurrentPage(Math.min(maxPage, minPage + index));
+                                    }}
                                     title={thumbnail.label || `Page ${index + 1}`}
                                 >
                                     <img src={thumbnail.src} alt={thumbnail.label || `Page ${index + 1}`} />

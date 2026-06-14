@@ -124,28 +124,11 @@ export function HostedFlipbookViewer({ bookId }) {
     const fullscreenThumbnails = useMemo(() => {
         if (!pages.length) return [];
 
-        const useCoverFlag = bookData?.useCover ?? true;
-        const totalSheets = sheets.length;
-        const minPage = useCoverFlag ? 0 : Math.min(1, Math.max(totalSheets, 1));
-        const maxPage = useCoverFlag ? totalSheets : Math.max(minPage, Math.ceil(pages.length / 2));
-        const totalViews = maxPage - minPage + 1;
-
-        return Array.from({ length: totalViews }, (_, index) => {
-            const currentPage = minPage + index;
-            let pageIndex = 0;
-
-            if (useCoverFlag) {
-                pageIndex = Math.min(currentPage, pages.length - 1);
-            } else {
-                pageIndex = Math.min(Math.max(currentPage - 1, 0) * 2, pages.length - 1);
-            }
-
-            return {
-                src: pages[pageIndex]?.src || pages[0]?.src,
-                label: `Page ${index + 1}`
-            };
-        });
-    }, [bookData?.useCover, pages, sheets.length]);
+        return pages.map((page, index) => ({
+            src: page.src,
+            label: `Page ${index + 1}`
+        }));
+    }, [pages]);
 
     if (status === 'loading') {
         return (
