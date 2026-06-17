@@ -273,10 +273,6 @@
     box-shadow: none;
 }
 
-.book.book-cover-centered .book-sheet:first-child .book-face-front {
-    /* box-shadow: 0 20px 40px rgba(15, 23, 42, 0.16); */
-}
-
 /* No-cover mode odd tail: center the last single left page. */
 .book.book-single-tail {
     transform: translateX(25%);
@@ -745,19 +741,51 @@
         padding: 0.14rem 0.4rem;
     }
 
-    .book-overlay-nav-actions {
-        display: flex;
-        gap: 0.5rem;
+    .book-overlay-bottom {
+        padding: 0 0.7rem 0.75rem;
+        gap: 0.45rem;
     }
 
-    .book-overlay-bottom .book-button {
-        min-width: 84px;
-        padding: 0.58rem 0.8rem;
-        font-size: 0.86rem;
+    .book-overlay-nav-row {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        gap: 0.45rem;
+    }
+
+    .book-preview-open-button {
+        order: 1;
+        min-width: 52px !important;
+        width: 52px;
+        padding-inline: 0;
     }
 
     .book-overlay-progress {
-        min-width: 150px;
-        padding: 0.4rem 0.55rem 0.45rem;
+        order: 2;
+        flex: 1 1 0%;
+        min-width: 0;
+        padding: 0.38rem 0.48rem 0.42rem;
+    }
+
+    .book-overlay-progress-top {
+        gap: 0.4rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .book-overlay-progress-top p {
+        font-size: 0.72rem;
+    }
+
+    .book-overlay-nav-actions {
+        order: 3;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.45rem;
+    }
+
+    .book-overlay-bottom .book-button {
+        min-width: 0;
+        padding: 0.55rem 0.7rem;
+        font-size: 0.86rem;
     }
 }
