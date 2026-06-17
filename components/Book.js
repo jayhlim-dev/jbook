@@ -4,8 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Page } from './Page';
 
 const MOBILE_FLIP_DURATION_MS = 260;
-// to set to false to hide the overlay
-const ALWAYS_SHOW_OVERLAY = true;
+const ALWAYS_SHOW_OVERLAY = process.env.NEXT_PUBLIC_ALWAYS_SHOW_OVERLAY === 'true';
 
 /**
  * @typedef {Object} Sheet
@@ -127,7 +126,10 @@ export function Book({
     const isBackClosed = useCover && currentPage === totalSheets;
     const isTrailingSinglePage = !useCover && resolvedContentPages % 2 === 1 && currentPage === maxPage;
     const showMobileSinglePage = isFullscreen && isMobileViewport && fullscreenThumbnails.length > 0;
-    const hasPageLevelPreview = fullscreenThumbnails.length > 0 && fullscreenThumbnails.length !== totalViews;
+    const hasPageLevelPreview =
+        fullscreenThumbnails.length > 0 &&
+        ((contentPageCount != null && fullscreenThumbnails.length === contentPageCount) ||
+            fullscreenThumbnails.length !== totalViews);
     const desktopPageProgress = (() => {
         if (!hasPageLevelPreview) {
             return { active: activeView, total: totalViews };

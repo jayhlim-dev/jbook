@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Book } from './Book';
 
 const MAX_FILES = 10;
 const MAX_PAGES = 10;
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB per file
 const MAX_TOTAL_UPLOAD_BYTES = 60 * 1024 * 1024; // 60 MB combined
+const ADMIN_MODE = process.env.NEXT_PUBLIC_ADMIN_MODE === 'true';
 
 function isSupportedFile(file) {
     return file.type.startsWith('image/') || file.type === 'application/pdf';
@@ -62,6 +65,48 @@ async function convertPdfToPageImages(file) {
     }
 
     return pageImages;
+}
+
+function createPreviewPageNode(page) {
+    return (
+        <div className="flipbook-media-fill">
+            <img src={page.src} alt={page.label} className="h-full w-full object-cover" />
+        </div>
+    );
+}
+
+function buildPreviewSheets(pages, useCover) {
+    const blankPage = <div className="h-full w-full bg-white" />;
+    const pageNodes = pages.map((page) => createPreviewPageNode(page));
+
+    if (!pageNodes.length) return [];
+
+    if (!useCover) {
+        const sheetCount = Math.max(1, Math.ceil((pageNodes.length + 1) / 2));
+        return Array.from({ length: sheetCount }, (_, i) => ({
+            front: i === 0 ? blankPage : pageNodes[2 * i - 1] || blankPage,
+            back: pageNodes[2 * i] || blankPage
+        }));
+    }
+
+    const coverNode = pageNodes[0];
+    const insidePages = pageNodes.slice(1);
+    const sheetCount = Math.max(1, Math.ceil((insidePages.length + 1) / 2));
+    let insideCursor = 0;
+
+    return Array.from({ length: sheetCount }, (_, i) => {
+        if (i === 0) {
+            return {
+                front: coverNode,
+                back: insidePages[insideCursor++] || blankPage
+            };
+        }
+
+        return {
+            front: insidePages[insideCursor++] || blankPage,
+            back: insidePages[insideCursor++] || blankPage
+        };
+    });
 }
 
 export function FlipbookStudio() {
@@ -122,6 +167,15 @@ export function FlipbookStudio() {
             }));
         });
     }, [items]);
+    const previewThumbnails = useMemo(
+        () =>
+            pages.map((page, index) => ({
+                src: page.src,
+                label: page.label || `Page ${index + 1}`
+            })),
+        [pages]
+    );
+    const previewSheets = useMemo(() => buildPreviewSheets(pages, useCover), [pages, useCover]);
 
     async function addFiles(fileList) {
         if (!fileList?.length) return;
@@ -132,28 +186,32 @@ export function FlipbookStudio() {
 
         try {
             const availableSlots = Math.max(0, MAX_FILES - itemsRef.current.length);
-            const accepted = incoming.slice(0, availableSlots);
+            const accepted = ADMIN_MODE ? incoming : incoming.slice(0, availableSlots);
             const prepared = [];
             const failedFiles = [];
-            let pageSlotsRemaining = Math.max(0, MAX_PAGES - totalGeneratedPages);
-            let bytesRemaining = Math.max(0, MAX_TOTAL_UPLOAD_BYTES - totalUploadedBytes);
+            let pageSlotsRemaining = ADMIN_MODE
+                ? Number.POSITIVE_INFINITY
+                : Math.max(0, MAX_PAGES - totalGeneratedPages);
+            let bytesRemaining = ADMIN_MODE
+                ? Number.POSITIVE_INFINITY
+                : Math.max(0, MAX_TOTAL_UPLOAD_BYTES - totalUploadedBytes);
 
             for (const file of accepted) {
-                if (file.size > MAX_FILE_SIZE_BYTES) {
+                if (!ADMIN_MODE && file.size > MAX_FILE_SIZE_BYTES) {
                     failedFiles.push(
                         `${file.name} (${formatBytes(file.size)} too large, max ${formatBytes(MAX_FILE_SIZE_BYTES)} — please compress first)`
                     );
                     continue;
                 }
 
-                if (file.size > bytesRemaining) {
+                if (!ADMIN_MODE && file.size > bytesRemaining) {
                     failedFiles.push(
                         `${file.name} (total upload limit ${formatBytes(MAX_TOTAL_UPLOAD_BYTES)} reached — please compress files)`
                     );
                     continue;
                 }
 
-                if (pageSlotsRemaining <= 0) {
+                if (!ADMIN_MODE && pageSlotsRemaining <= 0) {
                     failedFiles.push(`${file.name} (page limit reached: max ${MAX_PAGES})`);
                     continue;
                 }
@@ -173,13 +231,13 @@ export function FlipbookStudio() {
 
                 try {
                     const pdfPages = await convertPdfToPageImages(file);
-                    const allowedPages = pdfPages.slice(0, pageSlotsRemaining);
+                    const allowedPages = ADMIN_MODE ? pdfPages : pdfPages.slice(0, pageSlotsRemaining);
                     if (!allowedPages.length) {
                         failedFiles.push(`${file.name} (no page slots remaining)`);
                         continue;
                     }
 
-                    if (allowedPages.length < pdfPages.length) {
+                    if (!ADMIN_MODE && allowedPages.length < pdfPages.length) {
                         failedFiles.push(
                             `${file.name} (trimmed to ${allowedPages.length} pages due to max ${MAX_PAGES})`
                         );
@@ -341,17 +399,18 @@ export function FlipbookStudio() {
                     <div className="flex items-center gap-10">
                         <img src="/images/logo/main-logo-black.png" alt="Flipy logo" className="h-10 w-auto" />
                         <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 lg:flex">
-                            <button type="button" className="text-indigo-600">
-                                Home
-                            </button>
-                            <button type="button">My Books</button>
-                            <button type="button">Templates</button>
-                            <button type="button">Pricing</button>
-                            <button type="button">Resources</button>
+                            <Link href="/">
+                                <button type="button" className="text-indigo-600">
+                                    Home
+                                </button>
+                            </Link>
+                            <Link href="/my-books">
+                                <button type="button">My Books</button>
+                            </Link>
                         </nav>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
+                        {/* <button
                             type="button"
                             className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
                         >
@@ -362,7 +421,7 @@ export function FlipbookStudio() {
                             className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
                         >
                             Sign up free
-                        </button>
+                        </button> */}
                     </div>
                 </header>
 
@@ -398,7 +457,10 @@ export function FlipbookStudio() {
                         </div>
 
                         <p className="mt-4 text-sm text-slate-500">
-                            PDF, PNG, JPG or ZIP. Max {formatBytes(MAX_TOTAL_UPLOAD_BYTES)}
+                            PDF, PNG, JPG or ZIP.{' '}
+                            {ADMIN_MODE
+                                ? 'Admin mode: Unlimited upload size/pages/files'
+                                : `Max ${formatBytes(MAX_TOTAL_UPLOAD_BYTES)}`}
                         </p>
 
                         <div className="mt-8 grid gap-4">
@@ -417,8 +479,12 @@ export function FlipbookStudio() {
                                                     className="h-6 w-6 object-contain"
                                                 />
                                             </div>
-                                            <h4 className="text-base font-bold leading-tight text-slate-900">{feature.title}</h4>
-                                            <p className="mt-2 text-sm leading-relaxed text-slate-600">{feature.description}</p>
+                                            <h4 className="text-base font-bold leading-tight text-slate-900">
+                                                {feature.title}
+                                            </h4>
+                                            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                                                {feature.description}
+                                            </p>
                                         </article>
                                     ))}
                                 </div>
@@ -445,7 +511,7 @@ export function FlipbookStudio() {
                                         key={mode}
                                         type="button"
                                         onClick={() => setOrientation(mode)}
-                                        className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                                        className={`rounded-lg border px-4 py-2 text-sm font-semibold transition cursor-pointer ${
                                             orientation === mode
                                                 ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
                                                 : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
@@ -463,7 +529,18 @@ export function FlipbookStudio() {
                                     onChange={(event) => setUseCover(event.target.checked)}
                                     className="h-4 w-4 accent-indigo-600"
                                 />
-                                Include cover page
+                                <span>Include cover page</span>
+                                <span className="group relative inline-flex items-center">
+                                    <span
+                                        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-bold text-slate-500"
+                                        aria-label="Cover page info"
+                                    >
+                                        i
+                                    </span>
+                                    <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-60 -translate-x-1/2 rounded-md bg-slate-900 px-2 py-1.5 text-[11px] font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                        Adds your first uploaded page as a front cover before the rest of the book.
+                                    </span>
+                                </span>
                             </label>
 
                             <div
@@ -483,21 +560,25 @@ export function FlipbookStudio() {
                             >
                                 <p className="text-sm font-semibold text-slate-700">Drag and drop files here</p>
                                 <p className="mt-1 text-xs text-slate-500">
-                                    {totalGeneratedPages}/{MAX_PAGES} pages from {totalCount}/{MAX_FILES} files (
-                                    {formatBytes(totalUploadedBytes)} used)
+                                    {totalGeneratedPages}/{ADMIN_MODE ? 'Unlimited' : MAX_PAGES} pages from {totalCount}
+                                    /{ADMIN_MODE ? 'Unlimited' : MAX_FILES} files ({formatBytes(totalUploadedBytes)}{' '}
+                                    used)
                                 </p>
                             </div>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <div className="aspect-16/10 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
-                                {items[0]?.previewUrl ? (
-                                    <img
-                                        src={items[0].previewUrl}
-                                        alt="Flipbook preview"
-                                        className="h-full w-full object-cover"
+                            <div className="min-h-[360px] rounded-xl border border-slate-200 bg-slate-100 p-3">
+                                {previewSheets.length ? (
+                                    <Book
+                                        sheets={previewSheets}
+                                        title="Flipbook preview"
+                                        orientation={orientation}
+                                        useCover={useCover}
+                                        contentPageCount={pages.length}
+                                        fullscreenThumbnails={previewThumbnails}
                                     />
                                 ) : (
-                                    <div className="grid h-full place-items-center text-center text-slate-500">
+                                    <div className="grid min-h-[330px] place-items-center text-center text-slate-500">
                                         <div>
                                             <p className="text-sm font-semibold">Flipbook preview</p>
                                             <p className="mt-1 text-xs">Upload files to see live preview thumbnails.</p>

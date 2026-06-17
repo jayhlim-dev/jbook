@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Book } from './Book';
+import Link from 'next/link';
 
 function createContentPageNode(page, variant = 'page') {
     return (
@@ -25,9 +26,14 @@ function createCoverNode(title, subtitle) {
 }
 
 function buildSheetsFromPages(pages, useCover) {
-    const coverFront = createCoverNode('Your Flipbook', `${pages.length} generated page${pages.length === 1 ? '' : 's'}`);
+    const coverFront = createCoverNode(
+        'Your Flipbook',
+        `${pages.length} generated page${pages.length === 1 ? '' : 's'}`
+    );
     const blankPage = <div className="h-full w-full rounded-sm border border-white/10 bg-black/10" />;
-    const pageNodes = pages.map((page, index) => createContentPageNode(page, useCover && index === 0 ? 'cover' : 'page'));
+    const pageNodes = pages.map((page, index) =>
+        createContentPageNode(page, useCover && index === 0 ? 'cover' : 'page')
+    );
 
     if (!pages.length) {
         return [{ front: coverFront, back: blankPage }];

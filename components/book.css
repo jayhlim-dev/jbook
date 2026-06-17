@@ -73,7 +73,7 @@
     border: 1px solid #dbe2f0;
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.8);
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    /* box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); */
     backdrop-filter: blur(8px);
     pointer-events: auto;
 }
@@ -118,7 +118,7 @@
     height: min(90vh, calc(96vw / 0.707));
     border-radius: 0.4rem;
     overflow: hidden;
-    background: #eef2ff;
+    background: white;
     border: 1px solid #dbe2f0;
 }
 
@@ -237,7 +237,7 @@
     margin-inline: auto;
     border-radius: 0.5rem;
     transform-style: preserve-3d;
-    box-shadow: 0 24px 54px rgba(15, 23, 42, 0.16);
+    /* box-shadow: 0 24px 54px rgba(15, 23, 42, 0.16); */
     transition: transform 520ms cubic-bezier(0.22, 0.61, 0.36, 1);
     will-change: transform;
 }
@@ -252,11 +252,11 @@
 }
 
 .book.book-overlay-size {
-    width: min(96vw, calc(94vh * 1.414));
+    width: 94vw;
     height: auto;
     max-width: none;
     border-radius: 0.25rem;
-    box-shadow: 0 32px 72px rgba(15, 23, 42, 0.2);
+    /* box-shadow: 0 32px 72px rgba(15, 23, 42, 0.2); */
 }
 
 .book.book-overlay-size.book-orientation-landscape {
@@ -274,7 +274,18 @@
 }
 
 .book.book-cover-centered .book-sheet:first-child .book-face-front {
-    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.16);
+    /* box-shadow: 0 20px 40px rgba(15, 23, 42, 0.16); */
+}
+
+/* No-cover mode odd tail: center the last single left page. */
+.book.book-single-tail {
+    transform: translateX(25%);
+}
+
+/* No-cover odd tail still keeps an empty right face from the first sheet; hide it. */
+.book.book-single-tail .book-sheet:first-child .book-face-front {
+    opacity: 0;
+    background: transparent;
 }
 
 /* Decorative spine for visual realism */
@@ -308,7 +319,7 @@
         color-mix(in oklab, var(--color-primary) 18%, var(--color-secondary)),
         color-mix(in oklab, var(--color-primary) 8%, var(--color-secondary))
     );
-    box-shadow: 0 8px 60px color-mix(in oklab, black 10%, transparent);
+    /* box-shadow: 0 8px 60px color-mix(in oklab, black 10%, transparent); */
     opacity: 1;
     transition: opacity 160ms ease 360ms;
 }
@@ -366,8 +377,9 @@
     inset: 0;
     /* border-radius: 0 0.5rem 0.5rem 0; */
     /* border: 1px solid color-mix(in oklab, white 15%, transparent); */
-    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 52%, #eef2f7 100%);
+    /* background: linear-gradient(180deg, #ffffff 0%, #f8fafc 52%, #eef2f7 100%); */
     /* box-shadow: 0 4px 10px color-mix(in oklab, black 12%, transparent); */
+    background: #ffffff;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
     display: grid;
@@ -406,31 +418,6 @@
     justify-content: center;
     align-items: flex-start;
     overflow: hidden;
-}
-
-.flipbook-media-fill-cover::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at 84% 10%, rgba(255, 255, 255, 0.32), transparent 44%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(248, 250, 252, 0.12));
-    mix-blend-mode: screen;
-}
-
-.flipbook-media-fill-cover::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.7),
-        inset 0 -32px 46px rgba(15, 23, 42, 0.08);
-}
-
-.flipbook-media-fill-cover img {
-    filter: saturate(0.88) brightness(1.1);
 }
 
 .flipbook-media-fill img {
