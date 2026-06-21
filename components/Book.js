@@ -79,7 +79,7 @@ const DEFAULT_SHEETS = [
 /**
  * Book container handling navigation and sheet stacking.
  * Uses pure CSS 3D transforms (no external page-flip library).
- * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, lockFullscreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, useCover?: boolean, contentPageCount?: number, fullscreenThumbnails?: Array<{ src: string, label?: string }>, overlayBackHref?: string, overlayBackLabel?: string }} props
+ * @param {{ sheets?: Sheet[], title?: string, fullScreen?: boolean, lockFullscreen?: boolean, onRequestClose?: () => void, orientation?: 'portrait' | 'landscape', showEmbeddedControls?: boolean, showFullscreenButton?: boolean, useCover?: boolean, contentPageCount?: number, fullscreenThumbnails?: Array<{ src: string, label?: string }>, overlayBackHref?: string, overlayBackLabel?: string }} props
  */
 export function Book({
     sheets = DEFAULT_SHEETS,
@@ -89,6 +89,7 @@ export function Book({
     onRequestClose,
     orientation = 'portrait',
     showEmbeddedControls = true,
+    showFullscreenButton = true,
     useCover = true,
     contentPageCount,
     fullscreenThumbnails = [],
@@ -490,9 +491,11 @@ export function Book({
                     <button type="button" className="book-button" onClick={goNext} disabled={currentPage === maxPage}>
                         Next
                     </button>
-                    <button type="button" className="book-button" onClick={() => setIsFullscreen(true)}>
-                        Full Screen
-                    </button>
+                    {showFullscreenButton && (
+                        <button type="button" className="book-button" onClick={() => setIsFullscreen(true)}>
+                            Full Screen
+                        </button>
+                    )}
                 </div>
             )}
 

@@ -277,6 +277,16 @@ export function FlipbookStudio() {
         });
     }
 
+    function clearPreviewBook() {
+        itemsRef.current.forEach((item) => {
+            if (item.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl);
+        });
+        setItems([]);
+        setUploadError('');
+        setCloudSaveError('');
+        setCloudSaveMessage('');
+    }
+
     function handleFileInput(event) {
         void addFiles(event.target.files);
         event.target.value = '';
@@ -566,19 +576,22 @@ export function FlipbookStudio() {
                                 </p>
                             </div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <div className="min-h-[360px] rounded-xl border border-slate-200 bg-slate-100 p-3">
+                        <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                            <div className="h-[300px] rounded-xl border border-slate-200 bg-slate-100 p-2.5 sm:h-[320px]">
                                 {previewSheets.length ? (
-                                    <Book
-                                        sheets={previewSheets}
-                                        title="Flipbook preview"
-                                        orientation={orientation}
-                                        useCover={useCover}
-                                        contentPageCount={pages.length}
-                                        fullscreenThumbnails={previewThumbnails}
-                                    />
+                                    <div className="studio-book-preview mx-auto h-full max-w-[260px]">
+                                        <Book
+                                            sheets={previewSheets}
+                                            title="Flipbook preview"
+                                            orientation={orientation}
+                                            showFullscreenButton={false}
+                                            useCover={useCover}
+                                            contentPageCount={pages.length}
+                                            fullscreenThumbnails={previewThumbnails}
+                                        />
+                                    </div>
                                 ) : (
-                                    <div className="grid min-h-[330px] place-items-center text-center text-slate-500">
+                                    <div className="grid h-full place-items-center text-center text-slate-500">
                                         <div>
                                             <p className="text-sm font-semibold">Flipbook preview</p>
                                             <p className="mt-1 text-xs">Upload files to see live preview thumbnails.</p>
@@ -593,14 +606,24 @@ export function FlipbookStudio() {
                                         ? `Ready to generate ${totalGeneratedPages} page${totalGeneratedPages > 1 ? 's' : ''}.`
                                         : 'No pages yet'}
                                 </p>
-                                <button
-                                    type="button"
-                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
-                                    onClick={() => void generateBook(true)}
-                                    disabled={!items.length || isProcessingUploads || isSavingBook}
-                                >
-                                    {isSavingBook ? 'Saving to Cloud...' : 'Generate Book'}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={clearPreviewBook}
+                                        disabled={!items.length || isProcessingUploads || isSavingBook}
+                                    >
+                                        Discard
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                        onClick={() => void generateBook(true)}
+                                        disabled={!items.length || isProcessingUploads || isSavingBook}
+                                    >
+                                        {isSavingBook ? 'Saving to Cloud...' : 'Generate Book'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </section>

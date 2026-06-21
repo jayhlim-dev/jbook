@@ -43,6 +43,43 @@
     font-size: 0.875rem;
 }
 
+/* Compact controls/typography for mini studio preview card */
+.studio-book-preview .book-toolbar {
+    align-items: center;
+    gap: 0.55rem;
+    margin-bottom: 0.15rem;
+}
+
+.studio-book-preview .book-toolbar h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+}
+
+.studio-book-preview .book-toolbar p {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #4338ca;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 999px;
+    padding: 0.16rem 0.5rem;
+    white-space: nowrap;
+}
+
+.studio-book-preview .book-controls {
+    gap: 0.5rem;
+}
+
+.studio-book-preview .book-button {
+    padding: 0.42rem 0.72rem;
+    font-size: 0.8rem;
+}
+
 /* Title stays at top-left in fullscreen mode */
 .book-overlay-top {
     position: absolute;
@@ -252,7 +289,7 @@
 }
 
 .book.book-overlay-size {
-    width: 94vw;
+    width: min(84vw, calc(82vh * 1.414));
     height: auto;
     max-width: none;
     border-radius: 0.25rem;
@@ -260,7 +297,7 @@
 }
 
 .book.book-overlay-size.book-orientation-landscape {
-    width: min(96vw, calc(92vh * 2.84));
+    width: min(90vw, calc(80vh * 2.84));
 }
 
 /* Center first cover page instead of anchoring on the right spread side. */
@@ -477,6 +514,9 @@
     display: flex;
     align-items: center;
     gap: 0.55rem;
+    width: calc(100% - 0.25rem);
+    max-width: 1480px;
+    margin-inline: auto;
     overflow-x: auto;
     padding-bottom: 0.1rem;
 }
@@ -747,6 +787,7 @@
     }
 
     .book-overlay-nav-row {
+        width: 100%;
         flex-wrap: wrap;
         overflow-x: visible;
         gap: 0.45rem;
