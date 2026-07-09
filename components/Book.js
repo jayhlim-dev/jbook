@@ -506,10 +506,10 @@ export function Book({
                         {fullscreenThumbnails.length > 0 && (
                             <button
                                 type="button"
-                                className="book-button book-preview-open-button"
+                                className="book-button book-preview-open-button h-12 w-12 p-2!"
                                 onClick={() => setIsPreviewModalOpen(true)}
                             >
-                                <img src="/images/icon/apps-white.png" alt="" aria-hidden="true" className="book-preview-open-icon" />
+                                <img src="/images/icon/apps-white.png" alt="" aria-hidden="true" className="book-preview-open-icon h-full w-full" />
                             </button>
                         )}
                         <div className="book-overlay-progress">

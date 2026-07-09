@@ -391,9 +391,9 @@
 .book-sheet {
     position: absolute;
     top: 0;
-    right: 0;
+    right: -0.4px;
     bottom: 0;
-    width: 50%;
+    width: calc(50% + 0.8px);
     transform-origin: left center;
     transform-style: preserve-3d;
     transition: transform 700ms cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -446,7 +446,7 @@
 /* Uploaded image pages must fill the whole page frame. */
 .flipbook-media-fill {
     position: absolute;
-    inset: 0;
+    inset: -0.8px;
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -455,9 +455,9 @@
 
 .flipbook-media-fill img {
     width: 100% !important;
-    height: auto !important;
-    max-height: 100% !important;
-    object-fit: contain !important;
+    height: 100% !important;
+    max-height: none !important;
+    object-fit: cover !important;
     object-position: center;
     display: block;
 }
@@ -620,8 +620,6 @@
 }
 
 .book-preview-open-icon {
-    width: 0.9rem;
-    height: 0.9rem;
     object-fit: contain;
 }
 
